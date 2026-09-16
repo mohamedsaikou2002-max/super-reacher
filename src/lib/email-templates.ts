@@ -12,16 +12,19 @@ export const markets = [
   { code: "UK", name: "United Kingdom", language: "British English", currency: "GBP" },
 ];
 
-const localized: Record<string, { subject: string; greeting: string; pitch: string; question: string; optout: string }> = {
+type LocalizedCopy = { subject: string; greeting: string; pitch: string; question: string; optout: string };
+
+const defaultCopy: LocalizedCopy = { subject: "A simple way to grow bookings at", greeting: "Hi", pitch: "We help businesses like yours automate lead follow-up and turn more enquiries into confirmed bookings—without adding admin work.", question: "Would a quick 10-minute walkthrough this week be useful?", optout: "Reply STOP if you’d rather not hear from us." };
+
+const localized: Record<string, LocalizedCopy> = {
   FR: { subject: "Une idée pour augmenter les réservations chez", greeting: "Bonjour", pitch: "Nous aidons les entreprises comme la vôtre à automatiser le suivi des prospects et à transformer davantage de demandes en réservations.", question: "Seriez-vous disponible pour une courte présentation cette semaine ?", optout: "Répondez STOP pour ne plus recevoir de messages." },
   ES: { subject: "Una idea para aumentar las reservas de", greeting: "Hola", pitch: "Ayudamos a negocios como el vuestro a automatizar el seguimiento de clientes potenciales y convertir más consultas en reservas.", question: "¿Te vendría bien una breve demostración esta semana?", optout: "Responde STOP para no recibir más mensajes." },
   IT: { subject: "Un'idea per aumentare le prenotazioni di", greeting: "Buongiorno", pitch: "Aiutiamo attività come la vostra ad automatizzare il follow-up dei contatti e trasformare più richieste in prenotazioni.", question: "Avrebbe 10 minuti per una breve demo questa settimana?", optout: "Risponda STOP per non ricevere altri messaggi." },
   TW: { subject: "協助提升預約量的想法：", greeting: "您好", pitch: "我們協助企業自動化潛在客戶跟進流程，將更多詢問轉化為實際預約。", question: "這週方便安排十分鐘簡單了解嗎？", optout: "如不希望再收到訊息，請回覆 STOP。" },
-  default: { subject: "A simple way to grow bookings at", greeting: "Hi", pitch: "We help businesses like yours automate lead follow-up and turn more enquiries into confirmed bookings—without adding admin work.", question: "Would a quick 10-minute walkthrough this week be useful?", optout: "Reply STOP if you’d rather not hear from us." },
 };
 
 export function createEmail(input: { business: string; contact: string; sender: string; country: string; industry: string }) {
-  const copy = localized[input.country] ?? localized.default;
+  const copy = localized[input.country] ?? defaultCopy;
   const business = input.business || "your business";
   const contact = input.contact || "there";
   const sender = input.sender || "The Super Reacher Team";
