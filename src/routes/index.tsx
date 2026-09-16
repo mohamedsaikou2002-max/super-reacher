@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
     { property: "og:description", content: "Localized outreach, copy-ready HTML emails, and lead tracking in one workspace." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
-  ] },
+  ] }),
   component: SuperReacher,
 });
 
