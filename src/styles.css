@@ -19,6 +19,8 @@
  */
 
 @theme inline {
+  --font-sans: "Manrope", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -59,42 +61,56 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-primary-soft: var(--primary-soft);
+  --color-panel: var(--panel);
+  --color-chart-muted: var(--chart-muted);
+  --color-overlay: var(--overlay);
+  --color-email: var(--email);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --radius: 0.375rem;
+  --background: oklch(0.145 0.012 120);
+  --foreground: oklch(0.96 0.01 112);
+  --card: oklch(0.19 0.012 120);
+  --card-foreground: oklch(0.96 0.01 112);
+  --popover: oklch(0.205 0.012 120);
+  --popover-foreground: oklch(0.96 0.01 112);
+  --primary: oklch(0.88 0.23 126);
+  --primary-foreground: oklch(0.16 0.03 125);
+  --secondary: oklch(0.22 0.012 120);
+  --secondary-foreground: oklch(0.94 0.01 112);
+  --muted: oklch(0.24 0.01 120);
+  --muted-foreground: oklch(0.69 0.018 115);
+  --accent: oklch(0.245 0.025 125);
+  --accent-foreground: oklch(0.96 0.01 112);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --border: oklch(0.31 0.014 120);
+  --input: oklch(0.27 0.014 120);
+  --ring: oklch(0.88 0.23 126);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --sidebar: oklch(0.12 0.012 120);
+  --sidebar-foreground: oklch(0.93 0.01 112);
+  --sidebar-primary: oklch(0.88 0.23 126);
+  --sidebar-primary-foreground: oklch(0.16 0.03 125);
+  --sidebar-accent: oklch(0.22 0.022 125);
+  --sidebar-accent-foreground: oklch(0.9 0.12 126);
+  --sidebar-border: oklch(0.25 0.014 120);
+  --sidebar-ring: oklch(0.88 0.23 126);
+  --success: oklch(0.83 0.2 142);
+  --primary-soft: oklch(0.31 0.09 126 / 35%);
+  --panel: oklch(0.17 0.012 120);
+  --chart-muted: oklch(0.26 0.014 120);
+  --overlay: oklch(0.05 0.01 120 / 75%);
+  --email: oklch(0.96 0.006 110);
+  --gradient-brand: linear-gradient(105deg, oklch(0.91 0.23 126), oklch(0.75 0.23 138));
+  --shadow-brand: 0 8px 30px oklch(0.83 0.22 130 / 18%);
 }
 
 .dark {
@@ -140,5 +156,25 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+    min-width: 320px;
   }
+
+  button { cursor: pointer; }
+
+  input, select, textarea {
+    width: 100%;
+    border: 1px solid var(--color-input);
+    border-radius: var(--radius);
+    background: var(--color-secondary);
+    color: var(--color-foreground);
+    padding: 0.625rem 0.75rem;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--color-ring); box-shadow: 0 0 0 2px var(--primary-soft); }
 }
+
+@utility bg-brand-gradient { background: var(--gradient-brand); }
+@utility text-gradient { background: var(--gradient-brand); background-clip: text; color: transparent; }
+@utility shadow-brand { box-shadow: var(--shadow-brand); }
