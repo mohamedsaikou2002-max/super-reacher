@@ -14,7 +14,227 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaigns: {
+        Row: {
+          channel: string
+          country_code: string
+          created_at: string
+          id: string
+          name: string
+          positive_count: number
+          reply_count: number
+          sent_count: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          country_code: string
+          created_at?: string
+          id?: string
+          name: string
+          positive_count?: number
+          reply_count?: number
+          sent_count?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          country_code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          positive_count?: number
+          reply_count?: number
+          sent_count?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          country_code: string
+          created_at: string
+          html_content: string
+          id: string
+          industry: string
+          name: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          country_code: string
+          created_at?: string
+          html_content: string
+          id?: string
+          industry: string
+          name: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          html_content?: string
+          id?: string
+          industry?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          business_name: string
+          campaign_id: string | null
+          contact_name: string
+          country_code: string
+          created_at: string
+          email: string
+          id: string
+          industry: string
+          phone: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          campaign_id?: string | null
+          contact_name?: string
+          country_code: string
+          created_at?: string
+          email?: string
+          id?: string
+          industry: string
+          phone?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          campaign_id?: string | null
+          contact_name?: string
+          country_code?: string
+          created_at?: string
+          email?: string
+          id?: string
+          industry?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body_html: string
+          body_text: string
+          campaign_id: string | null
+          channel: string
+          created_at: string
+          direction: string
+          id: string
+          lead_id: string | null
+          provider: string
+          sentiment: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_html?: string
+          body_text?: string
+          campaign_id?: string | null
+          channel: string
+          created_at?: string
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          provider?: string
+          sentiment?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_html?: string
+          body_text?: string
+          campaign_id?: string | null
+          channel?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          provider?: string
+          sentiment?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          company_name: string
+          created_at: string
+          display_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string
+          created_at?: string
+          display_name?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
