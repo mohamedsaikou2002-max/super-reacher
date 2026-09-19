@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_requests: {
+        Row: {
+          approved: boolean
+          created_at: string
+          estimated_cost_usd: number
+          id: string
+          job_id: string | null
+          reason: string
+          resolved: boolean
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          estimated_cost_usd?: number
+          id?: string
+          job_id?: string | null
+          reason?: string
+          resolved?: boolean
+          tier?: string
+          user_id: string
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          estimated_cost_usd?: number
+          id?: string
+          job_id?: string | null
+          reason?: string
+          resolved?: boolean
+          tier?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           channel: string
@@ -56,6 +100,178 @@ export type Database = {
         }
         Relationships: []
       }
+      corpus_records: {
+        Row: {
+          country_code: string
+          created_at: string
+          id: string
+          industry: string
+          record: Json
+          source: string
+          stage: string
+          user_id: string
+        }
+        Insert: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          industry?: string
+          record?: Json
+          source?: string
+          stage?: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          industry?: string
+          record?: Json
+          source?: string
+          stage?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      demos: {
+        Row: {
+          company_name: string
+          configuration: Json
+          created_at: string
+          deployment_url: string | null
+          domain_id: string | null
+          expires_at: string | null
+          fully_qualified_domain: string | null
+          html: string
+          id: string
+          slug: string
+          status: string
+          subdomain: string | null
+          template_id: string
+          theme: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name: string
+          configuration?: Json
+          created_at?: string
+          deployment_url?: string | null
+          domain_id?: string | null
+          expires_at?: string | null
+          fully_qualified_domain?: string | null
+          html?: string
+          id?: string
+          slug: string
+          status?: string
+          subdomain?: string | null
+          template_id?: string
+          theme?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string
+          configuration?: Json
+          created_at?: string
+          deployment_url?: string | null
+          domain_id?: string | null
+          expires_at?: string | null
+          fully_qualified_domain?: string | null
+          html?: string
+          id?: string
+          slug?: string
+          status?: string
+          subdomain?: string | null
+          template_id?: string
+          theme?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demos_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deployments: {
+        Row: {
+          demo_id: string
+          deployment_url: string | null
+          finished_at: string | null
+          id: string
+          log: string
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          demo_id: string
+          deployment_url?: string | null
+          finished_at?: string | null
+          id?: string
+          log?: string
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          demo_id?: string
+          deployment_url?: string | null
+          finished_at?: string | null
+          id?: string
+          log?: string
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployments_demo_id_fkey"
+            columns: ["demo_id"]
+            isOneToOne: false
+            referencedRelation: "demos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domains: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          provider: string
+          provider_zone_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          provider?: string
+          provider_zone_id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          provider?: string
+          provider_zone_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           country_code: string
@@ -87,6 +303,93 @@ export type Database = {
           industry?: string
           name?: string
           subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      engine_settings: {
+        Row: {
+          allow_paid_apis: boolean
+          allow_remote_gpu: boolean
+          demo_base_domain: string
+          engine_api_key: string
+          engine_base_url: string
+          engine_enabled: boolean
+          local_first: boolean
+          monthly_budget_usd: number
+          require_cost_approval: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allow_paid_apis?: boolean
+          allow_remote_gpu?: boolean
+          demo_base_domain?: string
+          engine_api_key?: string
+          engine_base_url?: string
+          engine_enabled?: boolean
+          local_first?: boolean
+          monthly_budget_usd?: number
+          require_cost_approval?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allow_paid_apis?: boolean
+          allow_remote_gpu?: boolean
+          demo_base_domain?: string
+          engine_api_key?: string
+          engine_base_url?: string
+          engine_enabled?: boolean
+          local_first?: boolean
+          monthly_budget_usd?: number
+          require_cost_approval?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      jobs: {
+        Row: {
+          agent_type: string
+          cost_usd: number
+          created_at: string
+          error: string | null
+          id: string
+          model_used: string | null
+          payload: Json
+          provider_used: string | null
+          result: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_type: string
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          model_used?: string | null
+          payload?: Json
+          provider_used?: string | null
+          result?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_type?: string
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          model_used?: string | null
+          payload?: Json
+          provider_used?: string | null
+          result?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
