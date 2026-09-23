@@ -27,7 +27,7 @@ export function createEmail(input: { business: string; contact: string; sender: 
   const copy = localized[input.country] ?? defaultCopy;
   const business = input.business || "your business";
   const contact = input.contact || "there";
-  const sender = input.sender || "The Super Reacher Team";
+  const sender = input.sender || "The ReachOS Team";
   const subject = `${copy.subject} ${business}`;
   const preview = `${copy.pitch.slice(0, 90)}…`;
   const html = `<!doctype html>
@@ -39,7 +39,7 @@ export function createEmail(input: { business: string; contact: string; sender: 
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #dedfd9">
           <tr><td style="height:8px;background:linear-gradient(90deg,#b8ff32,#72e31a)"></td></tr>
-          <tr><td style="padding:34px 38px 10px;font-size:13px;font-weight:700;letter-spacing:1.4px;color:#506312">SUPER REACHER</td></tr>
+          <tr><td style="padding:34px 38px 10px;font-size:13px;font-weight:700;letter-spacing:1.4px;color:#506312">REACHOS</td></tr>
           <tr><td style="padding:18px 38px 6px;font-size:17px;line-height:1.6">${copy.greeting} ${contact},</td></tr>
           <tr><td style="padding:8px 38px;font-size:17px;line-height:1.65">${copy.pitch}</td></tr>
           <tr><td style="padding:8px 38px;font-size:17px;line-height:1.65">${copy.question}</td></tr>

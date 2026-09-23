@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  torproxy:
+    image: dperson/torproxy
+    container_name: torproxy_research
+    environment:
+      - TOR_SOCKS_PORT=9050
+    ports:
+      # Expose only to localhost for security
+      - "127.0.0.1:9050:9050"
+    restart: unless-stopped
+    mem_limit: 256m
+    cpu_shares: 512
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "--socks5", "127.0.0.1:9050", "--fail", "https://check.torproject.org/api/ip"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

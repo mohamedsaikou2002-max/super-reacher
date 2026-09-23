@@ -2,27 +2,29 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowUpRight, Check, Clipboard, Copy,
-  Gauge, Globe2, Inbox, LayoutDashboard, LogIn, LogOut, Mail, Menu, MessageSquareText,
+  Gauge, Globe2, Inbox, LayoutDashboard, LogIn, LogOut, Mail, Menu, MessageSquareText, Phone,
   MoreHorizontal, Play, Plus, Search, Send, Settings, Sparkles, Target, Users, X,
 } from "lucide-react";
 import { Button } from "@/components/Button";
 import { createEmail, markets } from "@/lib/email-templates";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { queueAllBusinessWebsiteCrawls } from "@/lib/intelligence/firecrawl.functions";
+import { REGISTRY_COUNTRY_SUMMARY } from "@/lib/intelligence/registry";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "Super Reacher — Outreach Workspace" },
-    { name: "description", content: "Create localized SMS and HTML email outreach, organize leads, and track replies in one focused workspace." },
-    { property: "og:title", content: "Super Reacher — Outreach Workspace" },
-    { property: "og:description", content: "Localized outreach, copy-ready HTML emails, and lead tracking in one workspace." },
+    { title: "ReachOS — Intelligence Workbench" },
+    { name: "description", content: "Evidence-first business intelligence, lead enrichment, and compliant outreach in one focused workspace." },
+    { property: "og:title", content: "ReachOS — Intelligence Workbench" },
+    { property: "og:description", content: "Find evidence, verify contacts, send carefully, and keep every reply in view." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: SuperReacher,
 });
 
-type View = "overview" | "campaigns" | "leads" | "messages" | "studio";
+type View = "overview" | "leads" | "send" | "inbox" | "numbers";
 type Lead = { id: string; business_name: string; contact_name: string; email: string; phone: string; country_code: string; industry: string; status: string; created_at: string };
 
 const demoLeads: Lead[] = [
@@ -34,10 +36,10 @@ const demoLeads: Lead[] = [
 
 const nav = [
   { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
-  { id: "campaigns" as const, label: "Campaigns", icon: Target },
   { id: "leads" as const, label: "Leads", icon: Users },
-  { id: "messages" as const, label: "Messages", icon: Inbox },
-  { id: "studio" as const, label: "Email studio", icon: Mail },
+  { id: "send" as const, label: "Send", icon: Mail },
+  { id: "inbox" as const, label: "Inbox", icon: Inbox },
+  { id: "numbers" as const, label: "Numbers", icon: Phone },
 ];
 
 function SuperReacher() {
@@ -67,11 +69,11 @@ function SuperReacher() {
       <aside className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-sidebar-border bg-sidebar transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
           <div className="grid size-8 place-items-center rounded-md bg-brand-gradient text-primary-foreground"><ArrowUpRight size={18} strokeWidth={3} /></div>
-          <div><div className="font-display text-[15px] font-bold">SUPER REACHER</div><div className="text-[10px] uppercase text-muted-foreground">Outreach system</div></div>
+          <div><div className="font-display text-[15px] font-bold">REACHOS</div><div className="text-[10px] uppercase text-muted-foreground">Intelligence workbench</div></div>
           <Button className="ml-auto lg:hidden" size="icon" variant="ghost" aria-label="Close menu" onClick={() => setMenuOpen(false)}><X size={17} /></Button>
         </div>
         <nav className="space-y-1 p-3" aria-label="Main navigation">
-          {nav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setView(id); setMenuOpen(false); }} className={`flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors ${view === id ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"}`}><Icon size={17} />{label}{id === "messages" && <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">3</span>}</button>)}
+          {nav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setView(id); setMenuOpen(false); }} className={`flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors ${view === id ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"}`}><Icon size={17} />{label}{id === "inbox" && <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">3</span>}</button>)}
         </nav>
         <div className="absolute inset-x-3 bottom-3 border-t border-sidebar-border pt-3">
           <button className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"><Settings size={17} />Settings</button>
@@ -87,14 +89,14 @@ function SuperReacher() {
         <header className="sticky top-0 z-30 grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:px-7">
           <Button className="lg:hidden" size="icon" variant="ghost" aria-label="Open menu" onClick={() => setMenuOpen(true)}><Menu size={19} /></Button>
           <div className="min-w-0"><h1 className="truncate font-display text-base font-bold">{title}</h1><p className="hidden text-xs text-muted-foreground sm:block">Reach the right business with the right message.</p></div>
-          <div className="flex items-center gap-2"><div className="hidden items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground md:flex"><Search size={14} /><span>Search leads</span><kbd className="text-[10px]">⌘K</kbd></div><Button size="sm" onClick={() => setView("studio")}><Sparkles size={14} />Create outreach</Button></div>
+          <div className="flex items-center gap-2"><div className="hidden items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground md:flex"><Search size={14} /><span>Search workspace</span><kbd className="text-[10px]">⌘K</kbd></div><CrawlAllButton/><Button size="sm" onClick={() => setView("send")}><Sparkles size={14} />Build message</Button></div>
         </header>
         <main className="mx-auto max-w-[1440px] p-4 md:p-7">
-          {view === "overview" && <Overview onCreate={() => setView("studio")} leads={leads} />}
-          {view === "campaigns" && <Campaigns onCreate={() => setView("studio")} />}
+          {view === "overview" && <Overview onCreate={() => setView("send")} leads={leads} />}
+          {view === "send" && <EmailStudio userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
           {view === "leads" && <Leads leads={leads} setLeads={setLeads} userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
-          {view === "messages" && <Messages />}
-          {view === "studio" && <EmailStudio userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
+          {view === "inbox" && <Messages />}
+          {view === "numbers" && <Numbers />}
         </main>
       </div>
       {menuOpen && <button className="fixed inset-0 z-30 bg-overlay lg:hidden" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
@@ -113,7 +115,22 @@ function Overview({ onCreate, leads }: { onCreate: () => void; leads: Lead[] }) 
       <div><div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-primary"><span className="size-2 rounded-full bg-primary shadow-brand" />Live workspace</div><h2 className="max-w-3xl font-display text-3xl font-semibold leading-tight md:text-5xl">Turn cold outreach into<br/><span className="text-gradient">warm conversations.</span></h2><p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">Localized campaigns across email and SMS, with every reply sorted so your team knows exactly who to call next.</p><div className="mt-6 flex gap-2"><Button onClick={onCreate}><Plus size={16} />New campaign</Button><Button variant="secondary"><Play size={15} />Resume campaign</Button></div></div>
       <div className="border border-border bg-panel p-5"><div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase text-muted-foreground">This week</span><MoreHorizontal size={17} className="text-muted-foreground" /></div><div className="mt-5 text-4xl font-semibold">18.4%</div><div className="mt-1 text-xs text-muted-foreground">Positive reply rate</div><div className="mt-6 flex h-24 items-end gap-2">{[34,52,44,68,57,82,74].map((height, i) => <div key={i} className="flex-1 bg-chart-muted" style={{ height: `${height}%` }}><div className={`h-full bg-brand-gradient ${i === 5 ? "opacity-100" : "opacity-40"}`} /></div>)}</div><div className="mt-2 flex justify-between text-[9px] text-muted-foreground"><span>MON</span><span>SUN</span></div></div>
     </section>
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Stat label="Total leads" value="1,248" change="+12.5%" icon={<Users size={16}/>} /><Stat label="Messages sent" value="3,680" change="+8.2%" icon={<Send size={16}/>} /><Stat label="Replies" value="412" change="+24.1%" icon={<MessageSquareText size={16}/>} /><Stat label="Booked calls" value="76" change="+16.4%" icon={<Target size={16}/>} /></section>
+    <section className="mb-6 rounded-xl border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Registry coverage</div>
+          <h3 className="mt-1 font-display text-lg font-semibold">France · Germany · Canada · United States</h3>
+        </div>
+        <div className="rounded-full border border-primary/30 bg-primary-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">{REGISTRY_COUNTRY_SUMMARY.totalSources} sources cataloged</div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">France</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.franceSources}</div><div className="text-[11px] text-muted-foreground">source records</div></div>
+        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">Germany</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.germanySources}</div><div className="text-[11px] text-muted-foreground">official registry seeds</div></div>
+        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">Canada</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.canadaSources}</div><div className="text-[11px] text-muted-foreground">federal + provincial placeholders</div></div>
+        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">U.S. states</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.usStatesCovered}</div><div className="text-[11px] text-muted-foreground">official portals seeded</div></div>
+      </div>
+    </section>
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Stat label="Businesses in view" value={String(leads.length)} change="live" icon={<Users size={16}/>} /><Stat label="Contacts pending review" value={String(leads.filter((lead) => lead.status === "pending").length)} change="live" icon={<Search size={16}/>} /><Stat label="Replies" value={String(leads.filter((lead) => lead.status.includes("reply")).length)} change="live" icon={<MessageSquareText size={16}/>} /><Stat label="Outreach-ready" value={String(leads.filter((lead) => lead.email || lead.phone).length)} change="review" icon={<Target size={16}/>} /></section>
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,.6fr)]"><div><div className="mb-3 flex items-center justify-between"><h3 className="font-display text-lg font-semibold">Recent leads</h3><button className="text-xs font-semibold text-primary">View all</button></div><LeadTable leads={leads.slice(0, 4)} /></div><div><h3 className="mb-3 font-display text-lg font-semibold">Campaign health</h3><div className="border border-border bg-card p-5"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-md bg-primary-soft text-primary"><Gauge size={19}/></div><div><div className="text-sm font-semibold">System operating normally</div><div className="text-xs text-muted-foreground">3 active campaigns</div></div></div><div className="mt-6 space-y-4">{[["Email deliverability","98.2%"],["SMS delivery","96.8%"],["Reply classification","99.4%"]].map(([a,b])=><div key={a}><div className="mb-1.5 flex justify-between text-xs"><span className="text-muted-foreground">{a}</span><strong>{b}</strong></div><div className="h-1.5 bg-muted"><div className="h-full w-[97%] bg-brand-gradient"/></div></div>)}</div></div></div></section>
   </div>;
 }
@@ -130,6 +147,10 @@ function Messages(){return <section><h2 className="font-display text-2xl font-se
 
 function EmailStudio({userEmail,onSignIn}:{userEmail:string|null;onSignIn:()=>void}) { const [form,setForm]=useState({business:"Northline Dental",contact:"Mia",sender:"Alex from Super Reacher",country:"SG",industry:"Dental"}); const generated=useMemo(()=>createEmail(form),[form]); const [subject,setSubject]=useState(generated.subject); const [html,setHtml]=useState(generated.html); const [copied,setCopied]=useState(""); useEffect(()=>{setSubject(generated.subject);setHtml(generated.html)},[generated]); async function copy(value:string,type:string){try{await navigator.clipboard.writeText(value)}catch{const area=document.createElement("textarea");area.value=value;area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();document.execCommand("copy");area.remove()}setCopied(type);setTimeout(()=>setCopied(""),1800)} async function save(){if(!userEmail){onSignIn();return} const {data:{user}}=await supabase.auth.getUser(); if(user) await supabase.from("email_templates").insert({user_id:user.id,name:`${form.business} intro`,country_code:form.country,industry:form.industry,subject,html_content:html}); setCopied("saved");setTimeout(()=>setCopied(""),1800)} return <section><div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-4"><div><div className="flex items-center gap-2 text-xs font-semibold uppercase text-primary"><Sparkles size={13}/>Localized email generator</div><h2 className="mt-2 font-display text-2xl font-semibold">Build a paste-ready HTML email</h2><p className="text-sm text-muted-foreground">Edit the details, preview the result, then copy the complete email code.</p></div><Button variant="secondary" onClick={save}>{copied==="saved"?<Check size={15}/>:<Clipboard size={15}/>}Save template</Button></div><div className="grid gap-5 xl:grid-cols-[minmax(360px,.75fr)_minmax(420px,1.25fr)]"><div className="space-y-4 border border-border bg-card p-5"><div className="grid gap-4 sm:grid-cols-2"><Field label="Business"><input value={form.business} onChange={e=>setForm({...form,business:e.target.value})}/></Field><Field label="Contact"><input value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})}/></Field><Field label="Market"><select value={form.country} onChange={e=>setForm({...form,country:e.target.value})}>{markets.map(m=><option key={m.code} value={m.code}>{m.name} · {m.language}</option>)}</select></Field><Field label="Industry"><input value={form.industry} onChange={e=>setForm({...form,industry:e.target.value})}/></Field></div><Field label="Sender"><input value={form.sender} onChange={e=>setForm({...form,sender:e.target.value})}/></Field><Field label="Subject"><div className="flex gap-2"><input value={subject} onChange={e=>setSubject(e.target.value)}/><Button size="icon" variant="secondary" aria-label="Copy subject" onClick={()=>copy(subject,"subject")}>{copied==="subject"?<Check size={15}/>:<Copy size={15}/>}</Button></div></Field><Field label="HTML email"><textarea className="min-h-72 font-mono text-[11px] leading-5" value={html} onChange={e=>setHtml(e.target.value)}/></Field><Button className="w-full" onClick={()=>copy(html,"html")}>{copied==="html"?<><Check size={16}/>Copied — paste it anywhere</>:<><Copy size={16}/>Copy complete HTML</>}</Button></div><div className="min-w-0 border border-border bg-panel"><div className="flex h-11 items-center justify-between border-b border-border px-4"><div className="flex items-center gap-2 text-xs font-semibold"><span className="size-2 rounded-full bg-success"/>Live preview</div><div className="flex gap-1"><span className="size-2 rounded-full bg-border"/><span className="size-2 rounded-full bg-border"/><span className="size-2 rounded-full bg-border"/></div></div><div className="p-4 md:p-7"><div className="mb-3 text-xs text-muted-foreground"><strong className="text-foreground">Subject:</strong> {subject}</div><iframe title="Email preview" className="h-[620px] w-full border border-border bg-email" srcDoc={html}/></div></div></div></section> }
 
+function Numbers() { return <section><div className="mb-6"><h2 className="font-display text-2xl font-semibold">Numbers</h2><p className="text-sm text-muted-foreground">Connected sending identities and their permitted capabilities.</p></div><div className="border border-border bg-card p-5"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-md bg-primary-soft text-primary"><Phone size={18}/></div><div><div className="text-sm font-semibold">No sending numbers connected</div><div className="text-xs text-muted-foreground">Provider credentials stay server-side. Add a phone provider to route SMS safely.</div></div></div></div></section>; }
+
+function CrawlAllButton() { const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false); async function queue() { setBusy(true); setMessage(""); try { const result = await queueAllBusinessWebsiteCrawls(); setMessage(`${result.queued} website crawl${result.queued === 1 ? "" : "s"} queued`); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not queue website crawls"); } finally { setBusy(false); } } return <div className="flex items-center gap-2"><Button variant="secondary" onClick={queue} disabled={busy}><Globe2 size={15}/>{busy ? "Queueing..." : "Crawl websites"}</Button>{message && <span className="text-[11px] text-muted-foreground">{message}</span>}</div>; }
+
 function Field({label,children}:{label:string;children:ReactNode}){return <label className="block text-xs font-semibold text-muted-foreground"><span className="mb-2 block">{label}</span>{children}</label>}
 function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}){return <div className="fixed inset-0 z-50 grid place-items-center bg-overlay p-4"><div className="w-full max-w-xl border border-border bg-popover p-5 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h3 className="font-display text-lg font-semibold">{title}</h3><Button size="icon" variant="ghost" aria-label="Close" onClick={onClose}><X size={17}/></Button></div>{children}</div></div>}
-function AuthModal({onClose}:{onClose:()=>void}){const [mode,setMode]=useState<"signin"|"signup">("signin");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [message,setMessage]=useState("");async function submit(){const result=mode==="signin"?await supabase.auth.signInWithPassword({email,password}):await supabase.auth.signUp({email,password});if(result.error)setMessage(result.error.message);else {setMessage(mode==="signup"?"Check your inbox to confirm your account.":"Signed in successfully.");if(mode==="signin")setTimeout(onClose,500)}}async function google(){const result=await lovable.auth.signInWithOAuth("google",{redirect_uri:window.location.origin});if(result.error)setMessage(result.error.message)}return <Modal title={mode==="signin"?"Sign in to Super Reacher":"Create your workspace"} onClose={onClose}><div className="space-y-4"><Field label="Email"><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></Field><Field label="Password"><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></Field>{message&&<p className="text-xs text-primary">{message}</p>}<Button className="w-full" onClick={submit}>{mode==="signin"?"Sign in":"Create account"}</Button><div className="flex items-center gap-3 text-[10px] uppercase text-muted-foreground"><span className="h-px flex-1 bg-border"/>or<span className="h-px flex-1 bg-border"/></div><Button className="w-full" variant="secondary" onClick={google}><Globe2 size={15}/>Continue with Google</Button><button className="w-full text-center text-xs text-muted-foreground hover:text-foreground" onClick={()=>setMode(mode==="signin"?"signup":"signin")}>{mode==="signin"?"New here? Create an account":"Already have an account? Sign in"}</button></div></Modal>}
+function AuthModal({onClose}:{onClose:()=>void}){const [mode,setMode]=useState<"signin"|"signup">("signin");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [message,setMessage]=useState("");async function submit(){const result=mode==="signin"?await supabase.auth.signInWithPassword({email,password}):await supabase.auth.signUp({email,password});if(result.error)setMessage(result.error.message);else {setMessage(mode==="signup"?"Check your inbox to confirm your account.":"Signed in successfully.");if(mode==="signin")setTimeout(onClose,500)}}async function google(){const result=await lovable.auth.signInWithOAuth("google",{redirect_uri:window.location.origin});if(result.error)setMessage(result.error.message)}return <Modal title={mode==="signin"?"Sign in to ReachOS":"Create your workspace"} onClose={onClose}><div className="space-y-4"><Field label="Email"><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></Field><Field label="Password"><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></Field>{message&&<p className="text-xs text-primary">{message}</p>}<Button className="w-full" onClick={submit}>{mode==="signin"?"Sign in":"Create account"}</Button><div className="flex items-center gap-3 text-[10px] uppercase text-muted-foreground"><span className="h-px flex-1 bg-border"/>or<span className="h-px flex-1 bg-border"/></div><Button className="w-full" variant="secondary" onClick={google}><Globe2 size={15}/>Continue with Google</Button><button className="w-full text-center text-xs text-muted-foreground hover:text-foreground" onClick={()=>setMode(mode==="signin"?"signup":"signin")}>{mode==="signin"?"New here? Create an account":"Already have an account? Sign in"}</button></div></Modal>}

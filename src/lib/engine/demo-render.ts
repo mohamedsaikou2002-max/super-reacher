@@ -47,6 +47,6 @@ small{display:block;margin-top:48px;color:#5d6360}
 <h1>${headline}</h1>
 <p>Prepared for <strong>${name}</strong>. This visual shows how a tailored ${product} experience could look and feel.</p>
 <div class="card"><h2>${product}</h2><p>${blurb}</p><button>${cta}</button></div>
-<small>Demo environment • Super Reacher Demo Studio</small>
+<small>Demo environment • ReachOS Demo Studio</small>
 </main></body></html>`;
 }
