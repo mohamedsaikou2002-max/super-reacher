@@ -38,7 +38,7 @@ export function createEmail(input: { business: string; contact: string; sender: 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f1;padding:32px 16px">
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #dedfd9">
-          <tr><td style="height:8px;background:linear-gradient(90deg,#b8ff32,#72e31a)"></td></tr>
+          <tr><td style="height:4px;background:#B22222"></td></tr>
           <tr><td style="padding:34px 38px 10px;font-size:13px;font-weight:700;letter-spacing:1.4px;color:#506312">REACHOS</td></tr>
           <tr><td style="padding:18px 38px 6px;font-size:17px;line-height:1.6">${copy.greeting} ${contact},</td></tr>
           <tr><td style="padding:8px 38px;font-size:17px;line-height:1.65">${copy.pitch}</td></tr>

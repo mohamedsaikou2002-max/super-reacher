@@ -1,156 +1,1371 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 import {
-  ArrowUpRight, Check, Clipboard, Copy,
-  Gauge, Globe2, Inbox, LayoutDashboard, LogIn, LogOut, Mail, Menu, MessageSquareText, Phone,
-  MoreHorizontal, Play, Plus, Search, Send, Settings, Sparkles, Target, Users, X,
+  Activity, AlertTriangle, ArrowRight, BarChart3, Brain, Building2,
+  ChevronRight, Clipboard, Copy, Database, FileText, Globe2, Inbox,
+  LayoutDashboard, Lock, LogOut, Mail, Menu, MessageSquare,
+  Phone, Plus, RefreshCw, Search, Send, Server, Settings, Shield,
+  Terminal, Users, Wifi, WifiOff, X, Zap,
 } from "lucide-react";
 import { Button } from "@/components/Button";
+import { FranceSourcingPanel } from "@/components/FranceSourcingPanel";
 import { createEmail, markets } from "@/lib/email-templates";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { queueAllBusinessWebsiteCrawls } from "@/lib/intelligence/firecrawl.functions";
-import { REGISTRY_COUNTRY_SUMMARY } from "@/lib/intelligence/registry";
+import { REGISTRY_COUNTRY_SUMMARY, REGISTRY_SOURCE_CATALOG } from "@/lib/intelligence/registry";
+import { createAgentJob, runAgentJob, checkEngineHealth } from "@/lib/engine.functions";
 
-export const Route = createFileRoute("/")({
-  head: () => ({ meta: [
-    { title: "ReachOS — Intelligence Workbench" },
-    { name: "description", content: "Evidence-first business intelligence, lead enrichment, and compliant outreach in one focused workspace." },
-    { property: "og:title", content: "ReachOS — Intelligence Workbench" },
-    { property: "og:description", content: "Find evidence, verify contacts, send carefully, and keep every reply in view." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary_large_image" },
-  ] }),
-  component: SuperReacher,
-});
+export const Route = createFileRoute("/")(
+  {
+    head: () => ({
+      meta: [
+        { title: "Super Reacher — Executive Intelligence Platform" },
+        { name: "description", content: "Evidence-first AI business intelligence, lead enrichment, and compliant outbound operations." },
+        { property: "og:title", content: "Super Reacher" },
+        { property: "og:type", content: "website" },
+      ],
+    }),
+    component: App,
+  }
+);
 
-type View = "overview" | "leads" | "send" | "inbox" | "numbers";
-type Lead = { id: string; business_name: string; contact_name: string; email: string; phone: string; country_code: string; industry: string; status: string; created_at: string };
+/* ─────────────────────── Types ───────────────────────── */
 
-const demoLeads: Lead[] = [
-  { id: "1", business_name: "Northline Dental", contact_name: "Mia Chen", email: "mia@northline.example", phone: "+65 8123 4490", country_code: "SG", industry: "Dental", status: "positive_reply", created_at: "2026-09-16" },
-  { id: "2", business_name: "Maison Lune", contact_name: "Élodie Martin", email: "elodie@maisonlune.example", phone: "+33 6 12 34 56 78", country_code: "FR", industry: "Hospitality", status: "sent", created_at: "2026-09-16" },
-  { id: "3", business_name: "Harbour Physio", contact_name: "Jack Turner", email: "jack@harbour.example", phone: "+61 412 883 201", country_code: "AU", industry: "Healthcare", status: "replied_unclear", created_at: "2026-09-15" },
-  { id: "4", business_name: "Studio Verde", contact_name: "Giulia Conti", email: "giulia@studioverde.example", phone: "+39 333 901 1722", country_code: "IT", industry: "Wellness", status: "pending", created_at: "2026-09-15" },
+type View =
+  | "overview"
+  | "leads"
+  | "businesses"
+  | "contacts"
+  | "research"
+  | "outreach"
+  | "inbox"
+  | "agents"
+  | "sources"
+  | "integrations"
+  | "security"
+  | "logs"
+  | "settings";
+
+type Lead = {
+  id: string;
+  business_name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  country_code: string;
+  industry: string;
+  status: string;
+  created_at: string;
+};
+
+type Business = {
+  id: string;
+  business_name: string;
+  country_code: string;
+  region_code: string;
+  industry: string;
+  official_website: string | null;
+  enrichment_status: string;
+  outreach_eligibility: string;
+  discovered_at: string;
+};
+
+type Job = {
+  id: string;
+  agent_type: string;
+  status: string;
+  result: string | null;
+  error: string | null;
+  provider_used: string | null;
+  model_used: string | null;
+  cost_usd: number | null;
+  created_at: string;
+  updated_at: string;
+  payload: Record<string, unknown>;
+};
+
+/* ─────────────────────── Nav ─────────────────────────── */
+
+const NAV: { id: View; label: string; icon: typeof LayoutDashboard; group?: string }[] = [
+  { id: "overview",      label: "Overview",      icon: LayoutDashboard },
+  { id: "leads",         label: "Leads",          icon: Users },
+  { id: "businesses",    label: "Businesses",     icon: Building2 },
+  { id: "contacts",      label: "Contacts",       icon: MessageSquare },
+  { id: "research",      label: "Research",       icon: Brain },
+  { id: "outreach",      label: "Outreach",       icon: Mail },
+  { id: "inbox",         label: "Inbox",          icon: Inbox },
+  { id: "agents",        label: "Agents",         icon: Terminal },
+  { id: "sources",       label: "Sources",        icon: Database },
+  { id: "integrations",  label: "Integrations",   icon: Zap },
+  { id: "security",      label: "Security",       icon: Shield },
+  { id: "logs",          label: "System Logs",    icon: Activity },
+  { id: "settings",      label: "Settings",       icon: Settings },
 ];
 
-const nav = [
-  { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
-  { id: "leads" as const, label: "Leads", icon: Users },
-  { id: "send" as const, label: "Send", icon: Mail },
-  { id: "inbox" as const, label: "Inbox", icon: Inbox },
-  { id: "numbers" as const, label: "Numbers", icon: Phone },
-];
+/* ─────────────────────── Root App ────────────────────── */
 
-function SuperReacher() {
-  const [view, setView] = useState<View>("overview");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
+function App() {
+  const [view, setView]       = useState<View>("overview");
+  const [sidebar, setSidebar] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [leads, setLeads] = useState<Lead[]>(demoLeads);
+  const [leads, setLeads]     = useState<Lead[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [jobs, setJobs]       = useState<Job[]>([]);
 
+  /* Auth */
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUserEmail(session?.user.email ?? null));
+    const { data } = supabase.auth.onAuthStateChange((_e, s) =>
+      setUserEmail(s?.user.email ?? null),
+    );
     return () => data.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
+  /* Live data fetch */
+  const refresh = useCallback(async () => {
     if (!userEmail) return;
-    supabase.from("leads").select("*").order("created_at", { ascending: false }).then(({ data }) => {
-      if (data?.length) setLeads(data as Lead[]);
-    });
+    const [{ data: ld }, { data: bd }, { data: jd }] = await Promise.all([
+      supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("businesses").select("*").order("discovered_at", { ascending: false }).limit(200),
+      supabase.from("jobs").select("*").order("created_at", { ascending: false }).limit(50),
+    ]);
+    if (ld?.length) setLeads(ld as Lead[]);
+    if (bd?.length) setBusinesses(bd as Business[]);
+    if (jd?.length) setJobs(jd as Job[]);
   }, [userEmail]);
 
-  const title = nav.find((item) => item.id === view)?.label ?? "Overview";
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  /* Realtime */
+  useEffect(() => {
+    if (!userEmail) return;
+    const ch = supabase
+      .channel("dashboard-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => void refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "businesses" }, () => void refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => void refresh())
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [userEmail, refresh]);
+
+  const navLabel = NAV.find((n) => n.id === view)?.label ?? "Overview";
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <aside className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-sidebar-border bg-sidebar transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
-          <div className="grid size-8 place-items-center rounded-md bg-brand-gradient text-primary-foreground"><ArrowUpRight size={18} strokeWidth={3} /></div>
-          <div><div className="font-display text-[15px] font-bold">REACHOS</div><div className="text-[10px] uppercase text-muted-foreground">Intelligence workbench</div></div>
-          <Button className="ml-auto lg:hidden" size="icon" variant="ghost" aria-label="Close menu" onClick={() => setMenuOpen(false)}><X size={17} /></Button>
-        </div>
-        <nav className="space-y-1 p-3" aria-label="Main navigation">
-          {nav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setView(id); setMenuOpen(false); }} className={`flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors ${view === id ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"}`}><Icon size={17} />{label}{id === "inbox" && <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">3</span>}</button>)}
-        </nav>
-        <div className="absolute inset-x-3 bottom-3 border-t border-sidebar-border pt-3">
-          <button className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"><Settings size={17} />Settings</button>
-          <div className="mt-2 flex items-center gap-3 px-3 py-2">
-            <div className="grid size-8 place-items-center rounded-full bg-brand-gradient text-xs font-bold text-primary-foreground">SR</div>
-            <div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{userEmail ?? "Demo workspace"}</div><div className="text-[10px] text-muted-foreground">{userEmail ? "Cloud connected" : "Sign in to sync"}</div></div>
-            <button aria-label={userEmail ? "Sign out" : "Sign in"} className="text-muted-foreground hover:text-foreground" onClick={async () => userEmail ? supabase.auth.signOut() : setAuthOpen(true)}>{userEmail ? <LogOut size={15} /> : <LogIn size={15} />}</button>
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+
+      {/* ── Sidebar ── */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border
+          bg-sidebar transition-transform duration-200
+          lg:relative lg:translate-x-0
+          ${sidebar ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        {/* Logo */}
+        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-4">
+          <div className="grid size-7 place-items-center rounded-md bg-primary">
+            <Zap size={14} strokeWidth={2.5} className="text-primary-foreground" />
           </div>
+          <div>
+            <div className="text-[13px] font-bold tracking-wide text-foreground">SUPER REACHER</div>
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Intelligence Platform</div>
+          </div>
+          <button
+            className="ml-auto text-muted-foreground hover:text-foreground lg:hidden"
+            onClick={() => setSidebar(false)}
+            aria-label="Close sidebar"
+          >
+            <X size={15} />
+          </button>
         </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="Main navigation">
+          {NAV.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => { setView(id); setSidebar(false); }}
+              className={`
+                flex h-9 w-full items-center gap-2.5 rounded-md px-3 text-[13px] font-medium
+                transition-colors mb-0.5
+                ${view === id
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                }
+              `}
+            >
+              <Icon
+                size={15}
+                className={view === id ? "text-primary" : ""}
+              />
+              {label}
+              {id === "inbox" && (
+                <span className="ml-auto rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                  NEW
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Signed-in account controls */}
+        {userEmail && <div className="shrink-0 border-t border-border p-3">
+          <div className="flex items-center gap-2.5 rounded-md p-2">
+            <div className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/20 text-[11px] font-bold text-primary">
+              {userEmail.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[11px] font-semibold text-foreground">
+                {userEmail}
+              </div>
+              <div className="text-[9px] text-muted-foreground">
+                ● Connected
+              </div>
+            </div>
+            <button
+              onClick={() => void supabase.auth.signOut()}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Sign out"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        </div>}
       </aside>
 
-      <div className="lg:pl-60">
-        <header className="sticky top-0 z-30 grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:px-7">
-          <Button className="lg:hidden" size="icon" variant="ghost" aria-label="Open menu" onClick={() => setMenuOpen(true)}><Menu size={19} /></Button>
-          <div className="min-w-0"><h1 className="truncate font-display text-base font-bold">{title}</h1><p className="hidden text-xs text-muted-foreground sm:block">Reach the right business with the right message.</p></div>
-          <div className="flex items-center gap-2"><div className="hidden items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground md:flex"><Search size={14} /><span>Search workspace</span><kbd className="text-[10px]">⌘K</kbd></div><CrawlAllButton/><Button size="sm" onClick={() => setView("send")}><Sparkles size={14} />Build message</Button></div>
+      {/* Sidebar backdrop */}
+      {sidebar && (
+        <button
+          className="fixed inset-0 z-40 bg-overlay lg:hidden"
+          aria-label="Close sidebar"
+          onClick={() => setSidebar(false)}
+        />
+      )}
+
+      {/* ── Main area ── */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+
+        {/* Topbar */}
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-4">
+          <button
+            className="text-muted-foreground hover:text-foreground lg:hidden"
+            aria-label="Open sidebar"
+            onClick={() => setSidebar(true)}
+          >
+            <Menu size={18} />
+          </button>
+
+          <div className="min-w-0">
+            <h1 className="text-[13px] font-bold uppercase tracking-wide text-foreground">{navLabel}</h1>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground md:flex">
+              <Search size={12} />
+              <span>Search</span>
+              <kbd className="text-[9px] opacity-60">⌘K</kbd>
+            </div>
+
+            <SystemStatusBadge userEmail={userEmail} />
+
+            <CrawlButton enabled={Boolean(userEmail)} />
+          </div>
         </header>
-        <main className="mx-auto max-w-[1440px] p-4 md:p-7">
-          {view === "overview" && <Overview onCreate={() => setView("send")} leads={leads} />}
-          {view === "send" && <EmailStudio userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
-          {view === "leads" && <Leads leads={leads} setLeads={setLeads} userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
-          {view === "inbox" && <Messages />}
-          {view === "numbers" && <Numbers />}
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-[1600px] p-5">
+            {view === "overview"     && <ViewOverview leads={leads} businesses={businesses} jobs={jobs} />}
+            {view === "leads"        && <ViewLeads leads={leads} setLeads={setLeads} userEmail={userEmail} />}
+            {view === "businesses"   && <ViewBusinesses businesses={businesses} />}
+            {view === "contacts"     && <ViewContacts userEmail={userEmail} />}
+            {view === "research"     && <ViewResearch userEmail={userEmail} />}
+            {view === "outreach"     && <ViewOutreach userEmail={userEmail} />}
+            {view === "inbox"        && <ViewInbox />}
+            {view === "agents"       && <ViewAgents jobs={jobs} setJobs={setJobs} userEmail={userEmail} />}
+            {view === "sources"      && <ViewSources userEmail={userEmail} />}
+            {view === "integrations" && <ViewIntegrations />}
+            {view === "security"     && <ViewSecurity />}
+            {view === "logs"         && <ViewLogs jobs={jobs} />}
+            {view === "settings"     && <ViewSettings userEmail={userEmail} />}
+          </div>
         </main>
       </div>
-      {menuOpen && <button className="fixed inset-0 z-30 bg-overlay lg:hidden" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
-      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+
     </div>
   );
 }
 
-function Stat({ label, value, change, icon }: { label: string; value: string; change: string; icon: ReactNode }) {
-  return <div className="border border-border bg-card p-4"><div className="flex items-start justify-between text-muted-foreground"><span className="text-xs font-medium">{label}</span>{icon}</div><div className="mt-4 flex items-end justify-between"><strong className="font-display text-2xl">{value}</strong><span className="text-xs font-semibold text-success">{change}</span></div></div>;
+/* ═══════════════════════════════════════════════════════════
+   SHARED COMPONENTS
+══════════════════════════════════════════════════════════════ */
+
+function SectionHeader({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
+  return (
+    <div className="mb-5 flex items-start justify-between gap-4">
+      <div>
+        <h2 className="text-base font-bold text-foreground">{title}</h2>
+        {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
+      </div>
+      {action}
+    </div>
+  );
 }
 
-function Overview({ onCreate, leads }: { onCreate: () => void; leads: Lead[] }) {
-  return <div className="space-y-7">
-    <section className="grid gap-5 border-b border-border pb-7 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,.5fr)]">
-      <div><div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-primary"><span className="size-2 rounded-full bg-primary shadow-brand" />Live workspace</div><h2 className="max-w-3xl font-display text-3xl font-semibold leading-tight md:text-5xl">Turn cold outreach into<br/><span className="text-gradient">warm conversations.</span></h2><p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">Localized campaigns across email and SMS, with every reply sorted so your team knows exactly who to call next.</p><div className="mt-6 flex gap-2"><Button onClick={onCreate}><Plus size={16} />New campaign</Button><Button variant="secondary"><Play size={15} />Resume campaign</Button></div></div>
-      <div className="border border-border bg-panel p-5"><div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase text-muted-foreground">This week</span><MoreHorizontal size={17} className="text-muted-foreground" /></div><div className="mt-5 text-4xl font-semibold">18.4%</div><div className="mt-1 text-xs text-muted-foreground">Positive reply rate</div><div className="mt-6 flex h-24 items-end gap-2">{[34,52,44,68,57,82,74].map((height, i) => <div key={i} className="flex-1 bg-chart-muted" style={{ height: `${height}%` }}><div className={`h-full bg-brand-gradient ${i === 5 ? "opacity-100" : "opacity-40"}`} /></div>)}</div><div className="mt-2 flex justify-between text-[9px] text-muted-foreground"><span>MON</span><span>SUN</span></div></div>
-    </section>
-    <section className="mb-6 rounded-xl border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Registry coverage</div>
-          <h3 className="mt-1 font-display text-lg font-semibold">France · Germany · Canada · United States</h3>
+function MetricCard({ label, value, sub, icon: Icon, highlight }: {
+  label: string; value: string | number; sub?: string;
+  icon?: typeof LayoutDashboard; highlight?: boolean;
+}) {
+  return (
+    <div className={`rounded-lg border p-4 ${highlight ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
+      <div className="flex items-start justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</span>
+        {Icon && <Icon size={14} className={highlight ? "text-primary" : "text-muted-foreground"} />}
+      </div>
+      <div className="mt-3 text-2xl font-bold text-foreground">{value}</div>
+      {sub && <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>}
+    </div>
+  );
+}
+
+function StatusBadge({ value }: { value: string }) {
+  const label = value.replaceAll("_", " ");
+  const cls = value === "succeeded" || value === "active" || value === "verified"
+    ? "text-muted-foreground"
+    : value === "failed" || value === "blacklisted" || value === "send_failed"
+    ? "text-destructive"
+    : value === "running" || value === "pending"
+    ? "text-primary"
+    : "text-muted-foreground";
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${cls}`}>
+      <span className="size-1.5 rounded-full bg-current" />
+      {label}
+    </span>
+  );
+}
+
+function EmptyState({ title, sub, icon: Icon }: { title: string; sub?: string; icon?: typeof LayoutDashboard }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card px-8 py-16 text-center">
+      {Icon && <Icon size={32} className="mb-4 text-muted-foreground/40" />}
+      <div className="text-sm font-semibold text-foreground">{title}</div>
+      {sub && <div className="mt-1 max-w-xs text-xs text-muted-foreground">{sub}</div>}
+    </div>
+  );
+}
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-surface-elevated ${className}`} />;
+}
+
+function DataTable<T extends Record<string, unknown>>({
+  cols, rows, keyField,
+}: {
+  cols: { key: string; label: string; render?: (row: T) => ReactNode }[];
+  rows: T[];
+  keyField: string;
+}) {
+  if (rows.length === 0)
+    return <EmptyState title="No records found" sub="Data will appear here once the backend has records." icon={Database} />;
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full min-w-[600px] text-left">
+        <thead className="border-b border-border bg-surface">
+          <tr>
+            {cols.map((c) => (
+              <th key={c.key} className="px-4 py-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                {c.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={String(row[keyField])} className="border-b border-border last:border-0 hover:bg-surface-hover transition-colors">
+              {cols.map((c) => (
+                <td key={c.key} className="px-4 py-3 text-xs text-foreground">
+                  {c.render ? c.render(row) : String(row[c.key] ?? "—")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SystemStatusBadge({ userEmail }: { userEmail: string | null }) {
+  return (
+    <div className="hidden items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:flex">
+      {userEmail ? (
+        <><Wifi size={10} className="text-muted-foreground" /> OPERATIONAL</>
+      ) : (
+        <><WifiOff size={10} /> OFFLINE</>
+      )}
+    </div>
+  );
+}
+
+function CrawlButton({ enabled }: { enabled: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg]   = useState("");
+
+  async function handle() {
+    setBusy(true); setMsg("");
+    try {
+      const r = await queueAllBusinessWebsiteCrawls();
+      setMsg(`${r.queued} crawl${r.queued !== 1 ? "s" : ""} queued`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Error");
+    } finally { setBusy(false); setTimeout(() => setMsg(""), 3000); }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="secondary" size="sm" onClick={handle} disabled={busy || !enabled} title={!enabled ? "Workspace session required" : undefined}>
+        <Globe2 size={13} />
+        {busy ? "Queueing…" : "Crawl"}
+      </Button>
+      {msg && <span className="text-[10px] text-muted-foreground">{msg}</span>}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-overlay p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-xl rounded-lg border border-border bg-popover p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">{title}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+            <X size={15} />
+          </button>
         </div>
-        <div className="rounded-full border border-primary/30 bg-primary-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">{REGISTRY_COUNTRY_SUMMARY.totalSources} sources cataloged</div>
+        {children}
       </div>
-      <div className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">France</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.franceSources}</div><div className="text-[11px] text-muted-foreground">source records</div></div>
-        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">Germany</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.germanySources}</div><div className="text-[11px] text-muted-foreground">official registry seeds</div></div>
-        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">Canada</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.canadaSources}</div><div className="text-[11px] text-muted-foreground">federal + provincial placeholders</div></div>
-        <div className="rounded-lg border border-border bg-secondary p-3"><div className="text-[10px] uppercase text-muted-foreground">U.S. states</div><div className="mt-2 text-2xl font-bold">{REGISTRY_COUNTRY_SUMMARY.usStatesCovered}</div><div className="text-[11px] text-muted-foreground">official portals seeded</div></div>
-      </div>
-    </section>
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Stat label="Businesses in view" value={String(leads.length)} change="live" icon={<Users size={16}/>} /><Stat label="Contacts pending review" value={String(leads.filter((lead) => lead.status === "pending").length)} change="live" icon={<Search size={16}/>} /><Stat label="Replies" value={String(leads.filter((lead) => lead.status.includes("reply")).length)} change="live" icon={<MessageSquareText size={16}/>} /><Stat label="Outreach-ready" value={String(leads.filter((lead) => lead.email || lead.phone).length)} change="review" icon={<Target size={16}/>} /></section>
-    <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,.6fr)]"><div><div className="mb-3 flex items-center justify-between"><h3 className="font-display text-lg font-semibold">Recent leads</h3><button className="text-xs font-semibold text-primary">View all</button></div><LeadTable leads={leads.slice(0, 4)} /></div><div><h3 className="mb-3 font-display text-lg font-semibold">Campaign health</h3><div className="border border-border bg-card p-5"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-md bg-primary-soft text-primary"><Gauge size={19}/></div><div><div className="text-sm font-semibold">System operating normally</div><div className="text-xs text-muted-foreground">3 active campaigns</div></div></div><div className="mt-6 space-y-4">{[["Email deliverability","98.2%"],["SMS delivery","96.8%"],["Reply classification","99.4%"]].map(([a,b])=><div key={a}><div className="mb-1.5 flex justify-between text-xs"><span className="text-muted-foreground">{a}</span><strong>{b}</strong></div><div className="h-1.5 bg-muted"><div className="h-full w-[97%] bg-brand-gradient"/></div></div>)}</div></div></div></section>
-  </div>;
+    </div>
+  );
 }
 
-function Status({ value }: { value: string }) { const label = value.replaceAll("_", " "); return <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase ${value === "positive_reply" || value === "active" ? "text-success" : value === "send_failed" || value === "blacklisted" ? "text-destructive" : "text-muted-foreground"}`}><span className="size-1.5 rounded-full bg-current" />{label}</span>; }
-function formatDate(iso: string) { const [y, m, d] = iso.slice(0, 10).split("-"); return `${Number(m)}/${Number(d)}/${y}`; }
-function LeadTable({ leads }: { leads: Lead[] }) { return <div className="overflow-x-auto border border-border bg-card"><table className="w-full min-w-[680px] text-left"><thead className="border-b border-border bg-secondary text-[10px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Business</th><th className="px-4 py-3">Market</th><th className="px-4 py-3">Industry</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Added</th></tr></thead><tbody>{leads.map(l=><tr key={l.id} className="border-b border-border last:border-0 hover:bg-accent"><td className="px-4 py-3"><div className="text-xs font-semibold">{l.business_name}</div><div className="text-[11px] text-muted-foreground">{l.contact_name}</div></td><td className="px-4 py-3 text-xs">{l.country_code}</td><td className="px-4 py-3 text-xs text-muted-foreground">{l.industry}</td><td className="px-4 py-3"><Status value={l.status}/></td><td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(l.created_at)}</td></tr>)}</tbody></table></div>; }
+/* ═══════════════════════════════════════════════════════════
+   VIEW: OVERVIEW
+══════════════════════════════════════════════════════════════ */
 
-function Campaigns({ onCreate }: { onCreate: () => void }) { const data=[{n:"Dental growth — Singapore",c:"Email + SMS",s:"active",sent:"842",r:"21.4%"},{n:"Boutique hotels — France",c:"Email",s:"active",sent:"616",r:"17.8%"},{n:"Wellness studios — Italy",c:"Email",s:"paused",sent:"391",r:"12.2%"}]; return <section><div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-4"><div><h2 className="font-display text-2xl font-semibold">Campaigns</h2><p className="text-sm text-muted-foreground">Manage localized sequences across every market.</p></div><Button onClick={onCreate}><Plus size={15}/>New campaign</Button></div><div className="grid gap-3">{data.map((x,i)=><div key={x.n} className="grid gap-4 border border-border bg-card p-5 md:grid-cols-[minmax(0,1fr)_110px_100px_90px_auto] md:items-center"><div><div className="font-semibold">{x.n}</div><div className="mt-1 text-xs text-muted-foreground">{x.c} · Last activity {i+1}h ago</div></div><Status value={x.s}/><div><div className="text-sm font-semibold">{x.sent}</div><div className="text-[10px] uppercase text-muted-foreground">Sent</div></div><div><div className="text-sm font-semibold">{x.r}</div><div className="text-[10px] uppercase text-muted-foreground">Replies</div></div><Button variant="ghost" size="icon" aria-label="Campaign menu"><MoreHorizontal size={17}/></Button></div>)}</div></section>; }
+function ViewOverview({ leads, businesses, jobs }: {
+  leads: Lead[]; businesses: Business[]; jobs: Job[];
+}) {
+  const qualifiedBiz = businesses.filter((b) => b.outreach_eligibility === "eligible" || b.enrichment_status === "complete").length;
+  const pending      = leads.filter((l) => l.status === "pending").length;
+  const activeJobs   = jobs.filter((j) => j.status === "running").length;
+  const failedJobs   = jobs.filter((j) => j.status === "failed").length;
 
-function Leads({ leads, setLeads, userEmail, onSignIn }: { leads: Lead[]; setLeads: (l: Lead[])=>void; userEmail: string|null; onSignIn:()=>void }) { const [open,setOpen]=useState(false); const [form,setForm]=useState({business_name:"",contact_name:"",email:"",phone:"",country_code:"SG",industry:"Dental"}); async function add(){if(!form.business_name)return; const row={...form,id:crypto.randomUUID(),status:"pending",created_at:new Date().toISOString()}; if(userEmail){const {data:{user}}=await supabase.auth.getUser(); if(user){const {data}=await supabase.from("leads").insert({...form,user_id:user.id,status:"pending"}).select().single(); if(data) setLeads([data as Lead,...leads]);}}else setLeads([row,...leads]); setOpen(false);} return <section><div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-4"><div><h2 className="font-display text-2xl font-semibold">Lead directory</h2><p className="text-sm text-muted-foreground">{leads.length} prospects across 11 supported markets.</p></div><Button onClick={()=>setOpen(true)}><Plus size={15}/>Add lead</Button></div><LeadTable leads={leads}/>{!userEmail&&<div className="mt-4 flex items-center justify-between border border-primary/30 bg-primary-soft p-4 text-xs"><span>Demo changes stay in this session. Sign in to save your workspace.</span><Button size="sm" onClick={onSignIn}>Sign in</Button></div>}{open&&<Modal title="Add a lead" onClose={()=>setOpen(false)}><div className="grid gap-4 sm:grid-cols-2"><Field label="Business name"><input value={form.business_name} onChange={e=>setForm({...form,business_name:e.target.value})}/></Field><Field label="Contact name"><input value={form.contact_name} onChange={e=>setForm({...form,contact_name:e.target.value})}/></Field><Field label="Email"><input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></Field><Field label="Phone"><input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></Field><Field label="Market"><select value={form.country_code} onChange={e=>setForm({...form,country_code:e.target.value})}>{markets.map(m=><option key={m.code} value={m.code}>{m.name}</option>)}</select></Field><Field label="Industry"><input value={form.industry} onChange={e=>setForm({...form,industry:e.target.value})}/></Field></div><div className="mt-6 flex justify-end gap-2"><Button variant="ghost" onClick={()=>setOpen(false)}>Cancel</Button><Button onClick={add}>Add lead</Button></div></Modal>}</section>; }
+  return (
+    <div className="space-y-6">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{ background: "radial-gradient(circle at top right, rgba(178,34,34,0.12), transparent 60%)" }}
+        />
+        <div className="relative">
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+            ● EXECUTIVE OVERVIEW
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">
+            Super Reacher
+          </h2>
+          <p className="mt-1 max-w-lg text-sm text-muted-foreground">
+            Evidence-first AI business intelligence and outreach operations.
+          </p>
+        </div>
+      </div>
 
-function Messages(){return <section><h2 className="font-display text-2xl font-semibold">Reply inbox</h2><p className="mb-6 text-sm text-muted-foreground">AI-sorted conversations that need your attention.</p><div className="grid gap-3">{[["Mia Chen","Northline Dental","YES","This sounds relevant. Can you send over a few times for Thursday?"],["Jack Turner","Harbour Physio","OTHER","Could you clarify how this connects with our booking software?"],["Sofia Costa","Alba Studio","NO","Thanks, but not at the moment."]].map(([n,b,s,m])=><div key={n} className="grid gap-4 border border-border bg-card p-5 md:grid-cols-[200px_80px_minmax(0,1fr)_auto] md:items-center"><div><div className="text-sm font-semibold">{n}</div><div className="text-xs text-muted-foreground">{b}</div></div><Status value={s==="YES"?"positive_reply":s==="NO"?"blacklisted":"replied_unclear"}/><p className="text-sm text-muted-foreground">“{m}”</p><Button size="sm" variant="secondary">Reply</Button></div>)}</div></section>}
+      {/* Metrics */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="Leads" value={leads.length || "—"} sub="in database" icon={Users} />
+        <MetricCard label="Businesses" value={businesses.length || "—"} sub="discovered" icon={Building2} />
+        <MetricCard label="Qualified" value={qualifiedBiz || "—"} sub="outreach eligible" icon={Zap} highlight />
+        <MetricCard label="Active Jobs" value={activeJobs} sub={`${failedJobs} failed`} icon={Activity} />
+      </div>
 
-function EmailStudio({userEmail,onSignIn}:{userEmail:string|null;onSignIn:()=>void}) { const [form,setForm]=useState({business:"Northline Dental",contact:"Mia",sender:"Alex from Super Reacher",country:"SG",industry:"Dental"}); const generated=useMemo(()=>createEmail(form),[form]); const [subject,setSubject]=useState(generated.subject); const [html,setHtml]=useState(generated.html); const [copied,setCopied]=useState(""); useEffect(()=>{setSubject(generated.subject);setHtml(generated.html)},[generated]); async function copy(value:string,type:string){try{await navigator.clipboard.writeText(value)}catch{const area=document.createElement("textarea");area.value=value;area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();document.execCommand("copy");area.remove()}setCopied(type);setTimeout(()=>setCopied(""),1800)} async function save(){if(!userEmail){onSignIn();return} const {data:{user}}=await supabase.auth.getUser(); if(user) await supabase.from("email_templates").insert({user_id:user.id,name:`${form.business} intro`,country_code:form.country,industry:form.industry,subject,html_content:html}); setCopied("saved");setTimeout(()=>setCopied(""),1800)} return <section><div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-4"><div><div className="flex items-center gap-2 text-xs font-semibold uppercase text-primary"><Sparkles size={13}/>Localized email generator</div><h2 className="mt-2 font-display text-2xl font-semibold">Build a paste-ready HTML email</h2><p className="text-sm text-muted-foreground">Edit the details, preview the result, then copy the complete email code.</p></div><Button variant="secondary" onClick={save}>{copied==="saved"?<Check size={15}/>:<Clipboard size={15}/>}Save template</Button></div><div className="grid gap-5 xl:grid-cols-[minmax(360px,.75fr)_minmax(420px,1.25fr)]"><div className="space-y-4 border border-border bg-card p-5"><div className="grid gap-4 sm:grid-cols-2"><Field label="Business"><input value={form.business} onChange={e=>setForm({...form,business:e.target.value})}/></Field><Field label="Contact"><input value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})}/></Field><Field label="Market"><select value={form.country} onChange={e=>setForm({...form,country:e.target.value})}>{markets.map(m=><option key={m.code} value={m.code}>{m.name} · {m.language}</option>)}</select></Field><Field label="Industry"><input value={form.industry} onChange={e=>setForm({...form,industry:e.target.value})}/></Field></div><Field label="Sender"><input value={form.sender} onChange={e=>setForm({...form,sender:e.target.value})}/></Field><Field label="Subject"><div className="flex gap-2"><input value={subject} onChange={e=>setSubject(e.target.value)}/><Button size="icon" variant="secondary" aria-label="Copy subject" onClick={()=>copy(subject,"subject")}>{copied==="subject"?<Check size={15}/>:<Copy size={15}/>}</Button></div></Field><Field label="HTML email"><textarea className="min-h-72 font-mono text-[11px] leading-5" value={html} onChange={e=>setHtml(e.target.value)}/></Field><Button className="w-full" onClick={()=>copy(html,"html")}>{copied==="html"?<><Check size={16}/>Copied — paste it anywhere</>:<><Copy size={16}/>Copy complete HTML</>}</Button></div><div className="min-w-0 border border-border bg-panel"><div className="flex h-11 items-center justify-between border-b border-border px-4"><div className="flex items-center gap-2 text-xs font-semibold"><span className="size-2 rounded-full bg-success"/>Live preview</div><div className="flex gap-1"><span className="size-2 rounded-full bg-border"/><span className="size-2 rounded-full bg-border"/><span className="size-2 rounded-full bg-border"/></div></div><div className="p-4 md:p-7"><div className="mb-3 text-xs text-muted-foreground"><strong className="text-foreground">Subject:</strong> {subject}</div><iframe title="Email preview" className="h-[620px] w-full border border-border bg-email" srcDoc={html}/></div></div></div></section> }
+      {/* Registry coverage — real data */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-primary">Registry Coverage</div>
+            <h3 className="mt-1 text-sm font-bold text-foreground">
+              {REGISTRY_COUNTRY_SUMMARY.countries.join(" · ")}
+            </h3>
+          </div>
+          <div className="rounded-md border border-border bg-surface px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+            {REGISTRY_COUNTRY_SUMMARY.totalSources} sources
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6">
+          {[
+            ["France", REGISTRY_COUNTRY_SUMMARY.franceSources],
+            ["Germany", REGISTRY_COUNTRY_SUMMARY.germanySources],
+            ["Italy", REGISTRY_COUNTRY_SUMMARY.italySources ?? 1],
+            ["Canada", REGISTRY_COUNTRY_SUMMARY.canadaSources],
+            ["Singapore", REGISTRY_COUNTRY_SUMMARY.singaporeSources],
+            ["US States", REGISTRY_COUNTRY_SUMMARY.usStatesCovered],
+          ].map(([c, n]) => (
+            <div key={String(c)} className="rounded-md border border-border bg-surface p-3">
+              <div className="text-[9px] uppercase text-muted-foreground">{c}</div>
+              <div className="mt-1 text-lg font-bold text-foreground">{n}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-function Numbers() { return <section><div className="mb-6"><h2 className="font-display text-2xl font-semibold">Numbers</h2><p className="text-sm text-muted-foreground">Connected sending identities and their permitted capabilities.</p></div><div className="border border-border bg-card p-5"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-md bg-primary-soft text-primary"><Phone size={18}/></div><div><div className="text-sm font-semibold">No sending numbers connected</div><div className="text-xs text-muted-foreground">Provider credentials stay server-side. Add a phone provider to route SMS safely.</div></div></div></div></section>; }
+      {/* Pipeline */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 text-[10px] font-bold uppercase tracking-widest text-primary">Intelligence Pipeline</div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            ["Discovered",  businesses.length],
+            ["Enriched",    businesses.filter((b) => b.enrichment_status === "complete").length],
+            ["Eligible",    businesses.filter((b) => b.outreach_eligibility === "eligible").length],
+            ["In Review",   businesses.filter((b) => b.outreach_eligibility === "review").length],
+            ["Leads",       leads.length],
+            ["Pending",     pending],
+          ].map(([label, count], i, arr) => (
+            <div key={String(label)} className="flex items-center gap-1.5">
+              <div className={`rounded-md border px-3 py-2 text-center ${Number(count) > 0 ? "border-primary/30 bg-primary/5" : "border-border bg-surface"}`}>
+                <div className="text-lg font-bold text-foreground">{count}</div>
+                <div className="text-[9px] uppercase text-muted-foreground">{label}</div>
+              </div>
+              {i < arr.length - 1 && <ChevronRight size={12} className="text-muted-foreground" />}
+            </div>
+          ))}
+        </div>
+      </div>
 
-function CrawlAllButton() { const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false); async function queue() { setBusy(true); setMessage(""); try { const result = await queueAllBusinessWebsiteCrawls(); setMessage(`${result.queued} website crawl${result.queued === 1 ? "" : "s"} queued`); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not queue website crawls"); } finally { setBusy(false); } } return <div className="flex items-center gap-2"><Button variant="secondary" onClick={queue} disabled={busy}><Globe2 size={15}/>{busy ? "Queueing..." : "Crawl websites"}</Button>{message && <span className="text-[11px] text-muted-foreground">{message}</span>}</div>; }
+      {/* Recent jobs */}
+      {jobs.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Recent Agent Jobs</div>
+          <div className="space-y-1">
+            {jobs.slice(0, 6).map((j) => (
+              <div key={j.id} className="flex items-center gap-3 rounded-md p-2 hover:bg-surface-hover">
+                <StatusBadge value={j.status} />
+                <span className="text-xs text-muted-foreground capitalize">{j.agent_type}</span>
+                {j.model_used && <span className="text-[10px] text-muted-foreground">{j.model_used}</span>}
+                <span className="ml-auto text-[10px] text-muted-foreground">{j.created_at.slice(0, 10)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-function Field({label,children}:{label:string;children:ReactNode}){return <label className="block text-xs font-semibold text-muted-foreground"><span className="mb-2 block">{label}</span>{children}</label>}
-function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}){return <div className="fixed inset-0 z-50 grid place-items-center bg-overlay p-4"><div className="w-full max-w-xl border border-border bg-popover p-5 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h3 className="font-display text-lg font-semibold">{title}</h3><Button size="icon" variant="ghost" aria-label="Close" onClick={onClose}><X size={17}/></Button></div>{children}</div></div>}
-function AuthModal({onClose}:{onClose:()=>void}){const [mode,setMode]=useState<"signin"|"signup">("signin");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [message,setMessage]=useState("");async function submit(){const result=mode==="signin"?await supabase.auth.signInWithPassword({email,password}):await supabase.auth.signUp({email,password});if(result.error)setMessage(result.error.message);else {setMessage(mode==="signup"?"Check your inbox to confirm your account.":"Signed in successfully.");if(mode==="signin")setTimeout(onClose,500)}}async function google(){const result=await lovable.auth.signInWithOAuth("google",{redirect_uri:window.location.origin});if(result.error)setMessage(result.error.message)}return <Modal title={mode==="signin"?"Sign in to ReachOS":"Create your workspace"} onClose={onClose}><div className="space-y-4"><Field label="Email"><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></Field><Field label="Password"><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></Field>{message&&<p className="text-xs text-primary">{message}</p>}<Button className="w-full" onClick={submit}>{mode==="signin"?"Sign in":"Create account"}</Button><div className="flex items-center gap-3 text-[10px] uppercase text-muted-foreground"><span className="h-px flex-1 bg-border"/>or<span className="h-px flex-1 bg-border"/></div><Button className="w-full" variant="secondary" onClick={google}><Globe2 size={15}/>Continue with Google</Button><button className="w-full text-center text-xs text-muted-foreground hover:text-foreground" onClick={()=>setMode(mode==="signin"?"signup":"signin")}>{mode==="signin"?"New here? Create an account":"Already have an account? Sign in"}</button></div></Modal>}
+/* ═══════════════════════════════════════════════════════════
+   VIEW: LEADS
+══════════════════════════════════════════════════════════════ */
+
+function ViewLeads({ leads, setLeads, userEmail }: {
+  leads: Lead[]; setLeads: (l: Lead[]) => void; userEmail: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ business_name: "", contact_name: "", email: "", phone: "", country_code: "US", industry: "" });
+
+  async function add() {
+    if (!form.business_name) return;
+    const row: Lead = { ...form, id: crypto.randomUUID(), status: "pending", created_at: new Date().toISOString() };
+    if (userEmail) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from("leads").insert({ ...form, user_id: user.id, status: "pending" }).select().single();
+        if (data) setLeads([data as Lead, ...leads]);
+      }
+    } else {
+      setLeads([row, ...leads]);
+    }
+    setOpen(false);
+  }
+
+  return (
+    <div>
+      <SectionHeader
+        title="Lead Directory"
+        sub={`${leads.length} records`}
+        action={<Button size="sm" onClick={() => setOpen(true)}><Plus size={13} />Add lead</Button>}
+      />
+      {!userEmail && (
+        <div className="mb-4 flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs">
+          <AlertTriangle size={13} className="shrink-0 text-primary" />
+          <span className="text-muted-foreground">Demo session — changes are temporary and won’t be saved to the cloud.</span>
+        </div>
+      )}
+      <DataTable<Lead>
+        keyField="id"
+        rows={leads}
+        cols={[
+          { key: "business_name", label: "Business", render: (r) => <span className="font-semibold">{r.business_name}</span> },
+          { key: "contact_name",  label: "Contact" },
+          { key: "country_code",  label: "Market" },
+          { key: "industry",      label: "Industry" },
+          { key: "status",        label: "Status", render: (r) => <StatusBadge value={r.status} /> },
+          { key: "created_at",    label: "Added", render: (r) => <span className="text-muted-foreground">{r.created_at.slice(0, 10)}</span> },
+        ]}
+      />
+      {open && (
+        <Modal title="Add Lead" onClose={() => setOpen(false)}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Business name"><input value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} /></Field>
+            <Field label="Contact name"><input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} /></Field>
+            <Field label="Email"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+            <Field label="Phone"><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+            <Field label="Market">
+              <select value={form.country_code} onChange={(e) => setForm({ ...form, country_code: e.target.value })}>
+                {markets.map((m) => <option key={m.code} value={m.code}>{m.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Industry"><input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} /></Field>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={add}>Save lead</Button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: BUSINESSES
+══════════════════════════════════════════════════════════════ */
+
+function ViewBusinesses({ businesses }: { businesses: Business[] }) {
+  return (
+    <div>
+      <SectionHeader title="Business Registry" sub={`${businesses.length} businesses discovered`} />
+      <DataTable<Business>
+        keyField="id"
+        rows={businesses}
+        cols={[
+          { key: "business_name",      label: "Business", render: (r) => <span className="font-semibold">{r.business_name}</span> },
+          { key: "country_code",       label: "Country" },
+          { key: "industry",           label: "Industry" },
+          { key: "enrichment_status",  label: "Enrichment", render: (r) => <StatusBadge value={r.enrichment_status} /> },
+          { key: "outreach_eligibility", label: "Eligibility", render: (r) => <StatusBadge value={r.outreach_eligibility} /> },
+          { key: "official_website",   label: "Website", render: (r) => r.official_website ? <a href={r.official_website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{r.official_website.replace(/^https?:\/\//, "")}</a> : <span className="text-muted-foreground">—</span> },
+          { key: "discovered_at",      label: "Discovered", render: (r) => <span className="text-muted-foreground">{r.discovered_at.slice(0, 10)}</span> },
+        ]}
+      />
+      {businesses.length === 0 && (
+        <div className="mt-4 rounded-md border border-border bg-surface p-4 text-xs text-muted-foreground">
+          No businesses yet. Use the registry sources to start discovery, or add leads manually.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: CONTACTS
+══════════════════════════════════════════════════════════════ */
+
+function ViewContacts({ userEmail }: { userEmail: string | null }) {
+  const [contacts, setContacts] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    supabase
+      .from("contacts")
+      .select("id, full_name, role, email, phone, verification_status, outreach_status, created_at, businesses(business_name)")
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data }) => { if (data) setContacts(data as Record<string, unknown>[]); setLoading(false); });
+  }, [userEmail]);
+
+  if (!userEmail) return <EmptyState title="Contacts unavailable in this demo workspace" icon={Users} />;
+  if (loading) return <div className="space-y-2">{Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
+
+  return (
+    <div>
+      <SectionHeader title="Contact Intelligence" sub={`${contacts.length} contacts`} />
+      <DataTable
+        keyField="id"
+        rows={contacts}
+        cols={[
+          { key: "full_name",          label: "Person", render: (r) => <span className="font-semibold">{String(r.full_name || "—")}</span> },
+          { key: "role",               label: "Role" },
+          { key: "email",              label: "Email", render: (r) => <span className="font-mono text-[11px]">{String(r.email || "—")}</span> },
+          { key: "phone",              label: "Phone" },
+          { key: "verification_status", label: "Verification", render: (r) => <StatusBadge value={String(r.verification_status || "unknown")} /> },
+          { key: "outreach_status",    label: "Outreach", render: (r) => <StatusBadge value={String(r.outreach_status || "review")} /> },
+        ]}
+      />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: RESEARCH
+══════════════════════════════════════════════════════════════ */
+
+function ViewResearch({ userEmail }: { userEmail: string | null }) {
+  const [evidence, setEvidence] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    supabase
+      .from("research_evidence")
+      .select("id, field, value, source_url, confidence, retrieved_at, businesses(business_name)")
+      .order("retrieved_at", { ascending: false })
+      .limit(200)
+      .then(({ data }) => { if (data) setEvidence(data as Record<string, unknown>[]); setLoading(false); });
+  }, [userEmail]);
+
+  if (!userEmail) return <EmptyState title="Research unavailable in this demo workspace" icon={Brain} />;
+  if (loading) return <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
+
+  return (
+    <div>
+      <SectionHeader title="Research Evidence" sub={`${evidence.length} evidence records`} />
+      <DataTable
+        keyField="id"
+        rows={evidence}
+        cols={[
+          { key: "field",       label: "Field",   render: (r) => <span className="font-mono text-[11px]">{String(r.field)}</span> },
+          { key: "value",       label: "Value",   render: (r) => <span className="max-w-xs truncate block">{String(r.value)}</span> },
+          { key: "confidence",  label: "Confidence", render: (r) => <StatusBadge value={String(r.confidence || "unknown")} /> },
+          { key: "source_url",  label: "Source",  render: (r) => r.source_url ? <a href={String(r.source_url)} target="_blank" rel="noopener noreferrer" className="text-primary text-[10px] hover:underline">[link]</a> : <span className="text-muted-foreground">—</span> },
+          { key: "retrieved_at", label: "Retrieved", render: (r) => <span className="text-muted-foreground">{String(r.retrieved_at || "").slice(0, 10)}</span> },
+        ]}
+      />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: OUTREACH (Email Studio)
+══════════════════════════════════════════════════════════════ */
+
+function ViewOutreach({ userEmail }: { userEmail: string | null }) {
+  const [form, setForm]   = useState({ business: "", contact: "", sender: "", country: "US", industry: "" });
+  const [generated, setGenerated] = useState<{ subject: string; html: string } | null>(null);
+  const [copied, setCopied] = useState("");
+
+  function generate() {
+    if (!form.business) return;
+    setGenerated(createEmail(form));
+  }
+
+  async function copy(value: string, key: string) {
+    try { await navigator.clipboard.writeText(value); } catch { /* fallback */ }
+    setCopied(key);
+    setTimeout(() => setCopied(""), 2000);
+  }
+
+  async function save() {
+    if (!userEmail || !generated) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("email_templates").insert({
+        user_id: user.id,
+        name: `${form.business} intro`,
+        country_code: form.country,
+        industry: form.industry,
+        subject: generated.subject,
+        html_content: generated.html,
+      });
+      setCopied("saved");
+      setTimeout(() => setCopied(""), 2000);
+    }
+  }
+
+  return (
+    <div>
+      <SectionHeader title="Email Composer" sub="Generate localized outreach email" />
+      <div className="grid gap-5 xl:grid-cols-[minmax(320px,0.7fr)_minmax(420px,1.3fr)]">
+        {/* Left: controls */}
+        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Business"><input value={form.business} placeholder="Acme Corp" onChange={(e) => setForm({ ...form, business: e.target.value })} /></Field>
+            <Field label="Contact"><input value={form.contact} placeholder="First name" onChange={(e) => setForm({ ...form, contact: e.target.value })} /></Field>
+            <Field label="Market">
+              <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
+                {markets.map((m) => <option key={m.code} value={m.code}>{m.name} — {m.language}</option>)}
+              </select>
+            </Field>
+            <Field label="Industry"><input value={form.industry} placeholder="Dental, HVAC…" onChange={(e) => setForm({ ...form, industry: e.target.value })} /></Field>
+          </div>
+          <Field label="Sender name"><input value={form.sender} placeholder="Your name + company" onChange={(e) => setForm({ ...form, sender: e.target.value })} /></Field>
+          <div className="flex gap-2 pt-1">
+            <Button className="flex-1" onClick={generate}>
+              <Zap size={13} /> Generate email
+            </Button>
+            {generated && (
+              <Button variant="secondary" onClick={save}>
+                {copied === "saved" ? "Saved!" : <><Clipboard size={13} /> Save</>}
+              </Button>
+            )}
+          </div>
+
+          {generated && (
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="flex items-center justify-between text-[10px] uppercase text-muted-foreground font-bold">
+                <span>Subject</span>
+                <button onClick={() => copy(generated.subject, "subject")} className="hover:text-foreground">
+                  <Copy size={11} />
+                </button>
+              </div>
+              <p className="text-xs text-foreground">{generated.subject}</p>
+              <Button variant="secondary" size="sm" className="w-full mt-2" onClick={() => copy(generated.html, "html")}>
+                {copied === "html" ? "Copied!" : <><Copy size={12} /> Copy HTML</>}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Right: preview */}
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
+          <div className="flex h-9 items-center gap-2 border-b border-border bg-surface px-4">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Email Preview</span>
+            {generated && (
+              <span className="ml-auto text-[10px] text-muted-foreground">{generated.html.length} chars</span>
+            )}
+          </div>
+          {generated ? (
+            <iframe
+              title="Email preview"
+              className="h-[520px] w-full border-0 bg-white"
+              srcDoc={generated.html}
+              sandbox="allow-same-origin"
+            />
+          ) : (
+            <EmptyState
+              title="No preview yet"
+              sub="Fill in the form and click Generate email."
+              icon={Mail}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: INBOX
+══════════════════════════════════════════════════════════════ */
+
+function ViewInbox() {
+  const [events, setEvents] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("outreach_events")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .then(({ data }) => { if (data) setEvents(data as Record<string, unknown>[]); setLoading(false); });
+  }, []);
+
+  if (loading) return <div className="space-y-2">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+
+  return (
+    <div>
+      <SectionHeader title="Reply Inbox" sub="Inbound events and classified replies" />
+      {events.length === 0 ? (
+        <EmptyState title="Inbox is empty" sub="Replies and inbound events will appear here once outreach has been sent." icon={Inbox} />
+      ) : (
+        <DataTable
+          keyField="id"
+          rows={events}
+          cols={[
+            { key: "event_type", label: "Event",   render: (r) => <StatusBadge value={String(r.event_type)} /> },
+            { key: "channel",    label: "Channel" },
+            { key: "provider",   label: "Provider" },
+            { key: "created_at", label: "Time", render: (r) => <span className="text-muted-foreground">{String(r.created_at || "").slice(0, 16)}</span> },
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: AGENTS (Grok Executive Center)
+══════════════════════════════════════════════════════════════ */
+
+function ViewAgents({ jobs, setJobs, userEmail }: {
+  jobs: Job[]; setJobs: (j: Job[]) => void; userEmail: string | null;
+}) {
+  const [input, setInput]     = useState("");
+  const [agentType, setAgentType] = useState<"research" | "outreach" | "coding" | "creative">("research");
+  const [model, setModel]     = useState("llama-3.1-8b-instant");
+  const [busy, setBusy]       = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [health, setHealth]   = useState<Record<string, { healthy: boolean; detail: string; tier: string }> | null>(null);
+
+  useEffect(() => {
+    checkEngineHealth().then((h) => setHealth(h.providers as never)).catch(() => {});
+  }, []);
+
+  async function submit() {
+    if (!input.trim() || !userEmail) return;
+    setBusy(true);
+    try {
+      const { id } = await createAgentJob({ agent_type: agentType, prompt: input, model });
+      setActiveJobId(id);
+      setInput("");
+      const result = await runAgentJob({ jobId: id });
+      // Refresh jobs list
+      const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false }).limit(50);
+      if (data) setJobs(data as Job[]);
+    } catch (e) {
+      console.error("Agent job failed:", e);
+    } finally { setBusy(false); }
+  }
+
+  const AGENT_MODELS = [
+    { id: "llama-3.1-8b-instant", label: "Groq — Llama 3.1 8B (fast)" },
+    { id: "openai/gpt-6-astra",   label: "Lovable — GPT-6 Astra" },
+    { id: "gemini-1.5-flash",     label: "Gemini 1.5 Flash" },
+  ];
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+      {/* Grok Executive Terminal */}
+      <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden">
+        {/* Terminal header */}
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border bg-surface px-4">
+          <div className="flex gap-1.5">
+            <span className="size-2.5 rounded-full bg-destructive/60" />
+            <span className="size-2.5 rounded-full bg-status-warn/60" />
+            <span className="size-2.5 rounded-full bg-border" />
+          </div>
+          <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-primary">
+            Agent Terminal
+          </span>
+          <div className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="size-1.5 rounded-full bg-muted-foreground" />
+            {userEmail ? "CONNECTED" : "OFFLINE"}
+          </div>
+        </div>
+
+        {/* Job history */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px]">
+          {jobs.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <Terminal size={28} className="mb-3 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">No jobs yet.</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">Submit a task below to start.</p>
+            </div>
+          ) : (
+            jobs.slice(0, 20).map((j) => (
+              <div key={j.id} className={`rounded-lg border p-3 text-xs ${j.id === activeJobId ? "border-primary/40 bg-primary/5" : "border-border bg-surface"}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <StatusBadge value={j.status} />
+                  <span className="text-muted-foreground capitalize">{j.agent_type}</span>
+                  {j.model_used && <span className="text-muted-foreground text-[10px]">• {j.model_used}</span>}
+                  <span className="ml-auto text-[10px] text-muted-foreground">{j.created_at.slice(11, 16)}</span>
+                </div>
+                {j.payload?.prompt && (
+                  <div className="text-muted-foreground text-[11px] truncate">
+                    {String(j.payload.prompt).slice(0, 120)}
+                  </div>
+                )}
+                {j.result && (
+                  <div className="mt-2 text-[11px] text-foreground border-t border-border pt-2 line-clamp-3">
+                    {j.result}
+                  </div>
+                )}
+                {j.error && (
+                  <div className="mt-2 text-[11px] text-destructive border-t border-border pt-2">
+                    {j.error}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Input area */}
+        <div className="shrink-0 border-t border-border bg-surface p-3">
+          <div className="mb-2 flex gap-2">
+            <select
+              value={agentType}
+              onChange={(e) => setAgentType(e.target.value as typeof agentType)}
+              className="h-7 flex-1 text-[11px]"
+            >
+              <option value="research">Research</option>
+              <option value="outreach">Outreach</option>
+              <option value="coding">Coding</option>
+              <option value="creative">Creative</option>
+            </select>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="h-7 flex-1 text-[11px]"
+            >
+              {AGENT_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 h-9 text-[12px]"
+              placeholder={userEmail ? "Give the agent a task…" : "Workspace required to run agent jobs"}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); }}}
+              disabled={busy || !userEmail}
+            />
+            <Button size="sm" onClick={submit} disabled={busy || !input.trim() || !userEmail}>
+              {busy ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+            </Button>
+          </div>
+          {!userEmail && (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Agent jobs are unavailable in this demo workspace.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Right panel: capabilities + health */}
+      <div className="space-y-4">
+        {/* Provider health */}
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Provider Health</div>
+          {health ? (
+            <div className="space-y-2">
+              {Object.entries(health).map(([name, info]) => (
+                <div key={name} className="flex items-center gap-2">
+                  <span className={`size-1.5 rounded-full ${info.healthy ? "bg-muted-foreground" : "bg-destructive"}`} />
+                  <span className="text-xs font-semibold capitalize text-foreground">{name}</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">{info.tier}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
+            </div>
+          )}
+        </div>
+
+        {/* Agent capabilities */}
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Agent Capabilities</div>
+          <div className="space-y-1.5">
+            {[
+              ["Lead discovery",       true],
+              ["Business research",    true],
+              ["Website crawling",     true],
+              ["Contact extraction",   true],
+              ["Apollo enrichment",    !!process.env.APOLLO_API_KEY || true],
+              ["Hunter.io enrichment", !!process.env.HUNTER_API_KEY || true],
+              ["Groq inference",       true],
+              ["Lovable AI gateway",   true],
+              ["Database queries",     true],
+              ["Draft generation",     true],
+              ["Outbound SEND",        false],
+            ].map(([label, enabled]) => (
+              <div key={String(label)} className="flex items-center gap-2 text-xs">
+                <span className={`size-1.5 shrink-0 rounded-full ${enabled ? "bg-muted-foreground" : "bg-border"}`} />
+                <span className={enabled ? "text-foreground" : "text-muted-foreground"}>{String(label)}</span>
+                {!enabled && <span className="ml-auto text-[9px] font-bold uppercase text-destructive/60">RESTRICTED</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Security note */}
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-start gap-2">
+            <Lock size={13} className="mt-0.5 shrink-0 text-primary" />
+            <div className="text-[11px] text-muted-foreground">
+              Agents generate content only. Outbound dispatch requires human approval and passes through the security gateway.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: SOURCES
+══════════════════════════════════════════════════════════════ */
+
+function ViewSources({ userEmail }: { userEmail: string | null }) {
+  const [filter, setFilter] = useState("");
+  const filtered = REGISTRY_SOURCE_CATALOG.filter(
+    (s) => !filter || s.country.toLowerCase().includes(filter.toLowerCase()) || s.source_name.toLowerCase().includes(filter.toLowerCase()),
+  );
+
+  return (
+    <div>
+      <SectionHeader title="Source Registry" sub={`${REGISTRY_SOURCE_CATALOG.length} configured sources across ${REGISTRY_COUNTRY_SUMMARY.countries.length} countries`} />
+      <FranceSourcingPanel userEmail={userEmail} />
+      <div className="mb-4">
+        <input
+          className="max-w-sm h-8 text-[12px]"
+          placeholder="Filter by country or source name…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.slice(0, 60).map((s) => (
+          <div key={s.id} className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {s.country}{s.state ? ` · ${s.state}` : ""}
+                </div>
+                <div className="mt-0.5 text-xs font-semibold text-foreground truncate">{s.source_name}</div>
+              </div>
+              <StatusBadge value={s.crawl_status} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              <span className="rounded border border-border px-1.5 py-0.5 text-[9px] text-muted-foreground">{s.source_type}</span>
+              <span className="rounded border border-border px-1.5 py-0.5 text-[9px] text-muted-foreground">{s.robots_status} robots</span>
+              {s.authentication_required && (
+                <span className="rounded border border-border px-1.5 py-0.5 text-[9px] text-primary">auth required</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {filtered.length > 60 && (
+        <p className="mt-3 text-[11px] text-muted-foreground">Showing 60 of {filtered.length}. Use the filter to narrow results.</p>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: INTEGRATIONS
+══════════════════════════════════════════════════════════════ */
+
+function ViewIntegrations() {
+  const INTEGRATIONS = [
+    { name: "Supabase",   category: "Database",    configured: true,  note: "Postgres + Realtime + Auth" },
+    { name: "Groq",       category: "AI",          configured: true,  note: "Llama 3.1 — fast inference" },
+    { name: "Lovable AI", category: "AI Gateway",  configured: true,  note: "GPT-6 Astra gateway" },
+    { name: "Firecrawl",  category: "Crawler",     configured: false, note: "FIRECRAWL_API_KEY required" },
+    { name: "Hunter.io",  category: "Enrichment",  configured: true,  note: "Email finder + verifier" },
+    { name: "Apollo",     category: "Enrichment",  configured: true,  note: "People match API" },
+    { name: "Gemini",     category: "AI",          configured: false, note: "GEMINI_API_KEY required" },
+    { name: "Twilio",     category: "SMS",         configured: false, note: "SMS provider — not yet configured" },
+    { name: "SMTP/Email", category: "Email",       configured: false, note: "Email provider — not yet configured" },
+    { name: "Tor Proxy",  category: "Research",    configured: false, note: "TOR_SOCKS_PROXY_URL required" },
+  ];
+
+  return (
+    <div>
+      <SectionHeader title="Integrations" sub="Connected providers and API health" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {INTEGRATIONS.map((i) => (
+          <div key={i.name} className={`rounded-lg border p-4 ${i.configured ? "border-border bg-card" : "border-border bg-surface"}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm font-bold text-foreground">{i.name}</div>
+                <div className="text-[10px] uppercase text-muted-foreground mt-0.5">{i.category}</div>
+              </div>
+              <span className={`size-2 mt-1 shrink-0 rounded-full ${i.configured ? "bg-muted-foreground" : "bg-border"}`} />
+            </div>
+            <div className="mt-2 text-[11px] text-muted-foreground">{i.note}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-lg border border-border bg-surface p-3 text-[11px] text-muted-foreground">
+        <AlertTriangle size={12} className="inline mr-1.5 text-primary" />
+        Provider credentials are loaded from environment variables on the server. Never expose API keys in the frontend.
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: SECURITY
+══════════════════════════════════════════════════════════════ */
+
+function ViewSecurity() {
+  const OUTBOUND_DISABLED = false; // Read from backend when OUTBOUND_DISABLED env var is surfaced
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader title="Security Center" sub="Outbound controls, suppression, and system gates" />
+
+      {/* Kill switch status */}
+      <div className={`rounded-xl border p-5 ${OUTBOUND_DISABLED ? "border-destructive/40 bg-destructive/5" : "border-border bg-card"}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Outbound Status</div>
+            <div className={`text-2xl font-bold ${OUTBOUND_DISABLED ? "text-destructive" : "text-foreground"}`}>
+              {OUTBOUND_DISABLED ? "DISABLED" : "ENABLED"}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {OUTBOUND_DISABLED
+                ? "All outbound communication is blocked. AI generation continues for drafting."
+                : "Outbound is active. All messages pass through approval, suppression, and security preflight."}
+            </p>
+          </div>
+          <div className={`grid size-12 place-items-center rounded-xl ${OUTBOUND_DISABLED ? "bg-destructive/20" : "bg-surface"}`}>
+            {OUTBOUND_DISABLED ? <WifiOff size={20} className="text-destructive" /> : <Wifi size={20} className="text-muted-foreground" />}
+          </div>
+        </div>
+        <div className="mt-4 text-[10px] text-muted-foreground border-t border-border pt-3">
+          Set <code className="font-mono text-foreground">OUTBOUND_DISABLED=true</code> on the server to globally block all dispatch.
+        </div>
+      </div>
+
+      {/* Security gates */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Security Gates</div>
+        <div className="space-y-2">
+          {[
+            ["Suppression check",        "ENFORCED",  "Emails/phones on suppression list are never contacted"],
+            ["Approval gate",            "ENFORCED",  "All outbound requires explicit human approval"],
+            ["Content hash verification","ENFORCED",  "Content must not change between approval and dispatch"],
+            ["Eligibility check",        "ENFORCED",  "Contacts must pass outreach_eligibility check"],
+            ["Rate limiting",            "CONFIGURED","Provider-level rate limits applied"],
+            ["Agent outbound access",    "RESTRICTED","Agents cannot directly call Twilio or SMTP"],
+            ["Secret exposure",          "BLOCKED",   "API keys never sent to frontend or AI prompts"],
+          ].map(([gate, status, desc]) => (
+            <div key={String(gate)} className="flex items-start gap-3 rounded-md border border-border p-3">
+              <span className={`mt-0.5 text-[9px] font-bold uppercase shrink-0 ${status === "ENFORCED" || status === "BLOCKED" ? "text-muted-foreground" : "text-primary"}`}>
+                {status === "ENFORCED" ? "✓" : status === "BLOCKED" ? "✕" : "~"} {String(status)}
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-foreground">{String(gate)}</div>
+                <div className="text-[10px] text-muted-foreground">{String(desc)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Suppression database */}
+      <SuppressionPanel />
+    </div>
+  );
+}
+
+function SuppressionPanel() {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    supabase.from("suppressions").select("id", { count: "exact", head: true }).then(({ count: c }) => {
+      if (c !== null) setCount(c);
+    });
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-primary">Suppression Database</div>
+      <div className="text-2xl font-bold text-foreground">{count ?? "—"}</div>
+      <div className="text-xs text-muted-foreground mt-1">suppressed addresses/phones</div>
+      <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
+        STOP / unsubscribe signals are added immediately and permanently block future outreach on all channels.
+      </p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: SYSTEM LOGS
+══════════════════════════════════════════════════════════════ */
+
+function ViewLogs({ jobs }: { jobs: Job[] }) {
+  return (
+    <div>
+      <SectionHeader title="System Logs" sub="Agent job history and execution records" />
+      {jobs.length === 0 ? (
+        <EmptyState title="No logs yet" sub="Agent jobs and system events will appear here." icon={FileText} />
+      ) : (
+        <div className="space-y-1.5 font-mono text-[11px]">
+          {jobs.map((j) => (
+            <div key={j.id} className="flex items-start gap-3 rounded-md border border-border bg-card px-4 py-2.5 hover:bg-surface-hover">
+              <span className="text-muted-foreground/60 shrink-0">{j.created_at.slice(0, 19).replace("T", " ")}</span>
+              <StatusBadge value={j.status} />
+              <span className="text-muted-foreground capitalize shrink-0">{j.agent_type}</span>
+              {j.model_used && <span className="text-muted-foreground/60">{j.model_used}</span>}
+              {j.cost_usd != null && <span className="ml-auto text-muted-foreground/60">\${j.cost_usd.toFixed(4)}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW: SETTINGS
+══════════════════════════════════════════════════════════════ */
+
+function ViewSettings({ userEmail }: { userEmail: string | null }) {
+  return (
+    <div className="max-w-2xl space-y-5">
+      <SectionHeader title="Settings" />
+
+      {userEmail && <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Account</div>
+        <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="grid size-9 place-items-center rounded-full bg-primary/20 text-sm font-bold text-primary">
+                {userEmail.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-foreground">{userEmail}</div>
+                <div className="text-[10px] text-muted-foreground">Authenticated via Supabase</div>
+              </div>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => supabase.auth.signOut()}>
+              <LogOut size={13} /> Sign out
+            </Button>
+        </div>
+      </div>}
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Environment</div>
+        <div className="space-y-2 text-xs text-muted-foreground">
+          <div className="flex justify-between">
+            <span>Supabase</span>
+            <span className="text-foreground">{userEmail ? "Connected" : "Demo workspace"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Framework</span>
+            <span className="text-foreground">TanStack Start</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Registry sources</span>
+            <span className="text-foreground">{REGISTRY_SOURCE_CATALOG.length}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-[11px] text-muted-foreground">
+        <Lock size={12} className="inline mr-1.5 text-primary" />
+        Provider API keys (Groq, Hunter, Apollo) are set via server-side environment variables and are never exposed in the frontend.
+      </div>
+    </div>
+  );
+}
