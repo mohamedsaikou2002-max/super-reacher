@@ -48,3 +48,9 @@ export async function removeCredential(userId:string,provider:ProviderId){
  const {error}=await supabaseAdmin.from("provider_credentials" as never).delete().eq("user_id",userId).eq("provider",provider);
  if(error) throw new Error("Unable to remove credential");
 }
+
+export async function isCostAcknowledged(userId:string,provider:ProviderId):Promise<boolean>{
+ const {data,error}=await supabaseAdmin.from("provider_credentials" as never).select("cost_acknowledged").eq("user_id",userId).eq("provider",provider).maybeSingle();
+ if(error) return false;
+ return (data as unknown as {cost_acknowledged?:boolean}|null)?.cost_acknowledged===true;
+}

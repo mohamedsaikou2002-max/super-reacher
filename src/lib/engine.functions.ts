@@ -123,8 +123,9 @@ async function callGroqAi(
   model: string,
   system: string,
   prompt: string,
+  personalKey?: string | null,
 ): Promise<{ text: string; provider: string; model: string; cost: number }> {
-  const key = process.env["GROQ_API_KEY"];
+  const key = personalKey || process.env["GROQ_API_KEY"];
   if (!key) throw new Error("GROQ_API_KEY is not configured.");
   const groq = createOpenAI({
     baseURL: "https://api.groq.com/openai/v1",
@@ -204,8 +205,18 @@ export const runAgentJob = createServerFn({ method: "POST" })
     const useSelfHosted = settings.engine_enabled && Boolean(settings.engine_base_url);
     const model = payload.model || (useSelfHosted ? "llama3.1" : "openai/gpt-6-astra");
 
+    const isGroq = model.startsWith("groq/") || model === "llama-3.1-8b-instant";
+    let personalGroqKey: string | null = null;
+    let personalGroqAuthorized = false;
+    if (isGroq) {
+      const { getCredential, isCostAcknowledged } = await import("./integration-vault.server");
+      try {
+        personalGroqKey = await getCredential(userId, "groq");
+        personalGroqAuthorized = !!personalGroqKey && await isCostAcknowledged(userId, "groq");
+      } catch { /* Deployment may not yet have the BYO vault migration. */ }
+    }
     const decision = evaluateCostPolicy(tierForModel(model), settings);
-    if (!decision.allowed || decision.requires_approval) {
+    if ((!decision.allowed || decision.requires_approval) && !personalGroqAuthorized) {
       await supabase.from("approval_requests").insert({
         user_id: userId,
         job_id: job.id,
@@ -228,8 +239,8 @@ export const runAgentJob = createServerFn({ method: "POST" })
     const system = AGENT_PROMPTS[job.agent_type as AgentType] ?? AGENT_PROMPTS.research;
     try {
       let outcome;
-      if (model.includes("llama-3.1-8b-instant") || model.includes("groq")) {
-        outcome = await callGroqAi(model, system, prompt);
+      if (isGroq) {
+        outcome = await callGroqAi(model.startsWith("groq/") ? model.slice(5) : model, system, prompt, personalGroqKey);
       } else if (useSelfHosted) {
         try {
           outcome = await callSelfHostedEngine(settings, model, system, prompt);
