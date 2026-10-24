@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/Button";
 import { FranceSourcingPanel } from "@/components/FranceSourcingPanel";
+import { GlobalOutreachStudio } from "@/components/GlobalOutreachStudio";
+import { BringYourOwnApi } from "@/components/BringYourOwnApi";
 import { createEmail, markets } from "@/lib/email-templates";
 import { supabase } from "@/integrations/supabase/client";
 import { queueAllBusinessWebsiteCrawls } from "@/lib/intelligence/firecrawl.functions";
@@ -92,7 +94,7 @@ const NAV: { id: View; label: string; icon: typeof LayoutDashboard; group?: stri
   { id: "businesses",    label: "Businesses",     icon: Building2 },
   { id: "contacts",      label: "Contacts",       icon: MessageSquare },
   { id: "research",      label: "Research",       icon: Brain },
-  { id: "outreach",      label: "Outreach",       icon: Mail },
+  { id: "outreach",      label: "Global Outreach",       icon: Mail },
   { id: "inbox",         label: "Inbox",          icon: Inbox },
   { id: "agents",        label: "Agents",         icon: Terminal },
   { id: "sources",       label: "Sources",        icon: Database },
@@ -281,11 +283,11 @@ function App() {
             {view === "businesses"   && <ViewBusinesses businesses={businesses} />}
             {view === "contacts"     && <ViewContacts userEmail={userEmail} />}
             {view === "research"     && <ViewResearch userEmail={userEmail} />}
-            {view === "outreach"     && <ViewOutreach userEmail={userEmail} />}
+            {view === "outreach"     && <GlobalOutreachStudio userEmail={userEmail} />}
             {view === "inbox"        && <ViewInbox />}
             {view === "agents"       && <ViewAgents jobs={jobs} setJobs={setJobs} userEmail={userEmail} />}
             {view === "sources"      && <ViewSources userEmail={userEmail} />}
-            {view === "integrations" && <ViewIntegrations />}
+            {view === "integrations" && <BringYourOwnApi userEmail={userEmail} />}
             {view === "security"     && <ViewSecurity />}
             {view === "logs"         && <ViewLogs jobs={jobs} />}
             {view === "settings"     && <ViewSettings userEmail={userEmail} />}
@@ -1208,7 +1210,7 @@ function ViewIntegrations() {
 ══════════════════════════════════════════════════════════════ */
 
 function ViewSecurity() {
-  const OUTBOUND_DISABLED = false; // Read from backend when OUTBOUND_DISABLED env var is surfaced
+  const OUTBOUND_DISABLED = true; // No authorized live outbound sender is implemented. // Read from backend when OUTBOUND_DISABLED env var is surfaced
 
   return (
     <div className="space-y-5">
