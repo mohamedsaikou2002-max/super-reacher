@@ -36,7 +36,9 @@ const AGENT_PROMPTS: Record<AgentType, string> = {
 };
 
 function tierForModel(modelId: string): ProviderTier {
-  return MODEL_REGISTRY.find((m) => m.id === modelId)?.tier ?? "free_hosted";
+  if (modelId.startsWith("groq/")) return "paid_api";
+  // Unknown models are not silently treated as free.
+  return MODEL_REGISTRY.find((m) => m.id === modelId)?.tier ?? "paid_api";
 }
 
 async function loadSettings(
@@ -123,8 +125,9 @@ async function callGroqAi(
   model: string,
   system: string,
   prompt: string,
+  userKey?: string | null,
 ): Promise<{ text: string; provider: string; model: string; cost: number }> {
-  const key = process.env["GROQ_API_KEY"];
+  const key = userKey || process.env["GROQ_API_KEY"];
   if (!key) throw new Error("GROQ_API_KEY is not configured.");
   const groq = createOpenAI({
     baseURL: "https://api.groq.com/openai/v1",
@@ -145,10 +148,18 @@ export const checkEngineHealth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const settings = await loadSettings(context.supabase as never, context.userId);
+    const { getCredential } = await import("./integration-vault.server");
+    let personalGroq = false;
+    try { personalGroq = Boolean(await getCredential(context.userId, "groq")); } catch { /* Vault not configured; show unavailable */ }
     const providers: Record<
       string,
       { healthy: boolean; is_local: boolean; is_free: boolean; tier: ProviderTier; detail: string }
     > = {
+      groq: {
+        healthy: personalGroq || Boolean(process.env["GROQ_API_KEY"]),
+        is_local: false, is_free: false, tier: "paid_api",
+        detail: personalGroq ? "BYO key saved (not live-tested)" : (process.env["GROQ_API_KEY"] ? "server key configured" : "Connect your Groq key"),
+      },
       lovable: {
         healthy: Boolean(process.env["LOVABLE_API_KEY"]),
         is_local: false,
@@ -204,8 +215,18 @@ export const runAgentJob = createServerFn({ method: "POST" })
     const useSelfHosted = settings.engine_enabled && Boolean(settings.engine_base_url);
     const model = payload.model || (useSelfHosted ? "llama3.1" : "openai/gpt-6-astra");
 
+    const isGroq = model === "llama-3.1-8b-instant" || model.startsWith("groq/");
+    let personalGroqKey: string | null = null;
+    let personalGroqAuthorized = false;
+    if (isGroq) {
+      const { getCredential, isCostAcknowledged } = await import("./integration-vault.server");
+      try {
+        personalGroqKey = await getCredential(userId, "groq");
+        personalGroqAuthorized = Boolean(personalGroqKey) && await isCostAcknowledged(userId, "groq");
+      } catch { /* Fall back to existing deployment policy if personal vault is unavailable */ }
+    }
     const decision = evaluateCostPolicy(tierForModel(model), settings);
-    if (!decision.allowed || decision.requires_approval) {
+    if ((!decision.allowed || decision.requires_approval) && !personalGroqAuthorized) {
       await supabase.from("approval_requests").insert({
         user_id: userId,
         job_id: job.id,
@@ -228,8 +249,9 @@ export const runAgentJob = createServerFn({ method: "POST" })
     const system = AGENT_PROMPTS[job.agent_type as AgentType] ?? AGENT_PROMPTS.research;
     try {
       let outcome;
-      if (model.includes("llama-3.1-8b-instant") || model.includes("groq")) {
-        outcome = await callGroqAi(model, system, prompt);
+      if (isGroq) {
+        const groqModel = model.startsWith("groq/") ? model.slice(5) : model;
+        outcome = await callGroqAi(groqModel, system, prompt, personalGroqKey);
       } else if (useSelfHosted) {
         try {
           outcome = await callSelfHostedEngine(settings, model, system, prompt);

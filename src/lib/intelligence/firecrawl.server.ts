@@ -31,14 +31,14 @@ export type CrawledPage = {
   crawl_status: "completed";
 };
 
-function getFirecrawlKey(): string {
-  const key = process.env["FIRECRAWL_API_KEY"]?.trim();
+function getFirecrawlKey(personalKey?: string): string {
+  const key = personalKey?.trim() || process.env["FIRECRAWL_API_KEY"]?.trim();
   if (!key) throw new Error("FIRECRAWL_API_KEY is not configured on the server.");
   return key;
 }
 
-function firecrawlHeaders(): HeadersInit {
-  return { Authorization: `Bearer ${getFirecrawlKey()}`, "Content-Type": "application/json" };
+function firecrawlHeaders(personalKey?: string): HeadersInit {
+  return { Authorization: `Bearer ${getFirecrawlKey(personalKey)}`, "Content-Type": "application/json" };
 }
 
 function pageFromDocument(document: FirecrawlDocument, officialWebsite: string): CrawledPage | null {
@@ -59,13 +59,14 @@ export async function crawlOfficialWebsite(input: {
   officialWebsite: string;
   maxPages?: number;
   maxDepth?: number;
+  apiKey?: string;
 }): Promise<{ pages: CrawledPage[]; crawlId?: string }> {
   const officialWebsite = normalizeUrl(input.officialWebsite);
   if (!officialWebsite) throw new Error("A valid official website URL is required.");
 
   const response = await fetch("https://api.firecrawl.dev/v2/crawl", {
     method: "POST",
-    headers: firecrawlHeaders(),
+    headers: firecrawlHeaders(input.apiKey),
     body: JSON.stringify({
       url: officialWebsite,
       limit: Math.min(Math.max(input.maxPages ?? 15, 1), 50),
@@ -78,7 +79,7 @@ export async function crawlOfficialWebsite(input: {
   if (body.id && !body.data?.length && body.status !== "completed") {
     for (let attempt = 0; attempt < 30; attempt += 1) {
       await sleep(1000);
-      const statusResponse = await fetch(`https://api.firecrawl.dev/v2/crawl/${encodeURIComponent(body.id)}`, { headers: firecrawlHeaders() });
+      const statusResponse = await fetch(`https://api.firecrawl.dev/v2/crawl/${encodeURIComponent(body.id)}`, { headers: firecrawlHeaders(input.apiKey) });
       if (!statusResponse.ok) throw new Error(`Firecrawl crawl status failed with HTTP ${statusResponse.status}.`);
       body = (await statusResponse.json()) as FirecrawlCrawlResponse;
       if (body.status === "completed" || body.status === "failed" || body.status === "cancelled") break;

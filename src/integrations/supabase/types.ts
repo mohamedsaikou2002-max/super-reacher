@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -350,6 +350,42 @@ export type Database = {
         }
         Relationships: []
       }
+      global_outreach_profiles: {
+        Row: {
+          audience: string
+          offer: string
+          preferred_channel: string
+          preferred_market: string
+          profession: string
+          sender_name: string
+          updated_at: string
+          user_id: string
+          value_proposition: string
+        }
+        Insert: {
+          audience?: string
+          offer?: string
+          preferred_channel?: string
+          preferred_market?: string
+          profession?: string
+          sender_name?: string
+          updated_at?: string
+          user_id: string
+          value_proposition?: string
+        }
+        Update: {
+          audience?: string
+          offer?: string
+          preferred_channel?: string
+          preferred_market?: string
+          profession?: string
+          sender_name?: string
+          updated_at?: string
+          user_id?: string
+          value_proposition?: string
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           agent_type: string
@@ -535,6 +571,36 @@ export type Database = {
           display_name?: string
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      provider_credentials: {
+        Row: {
+          cost_acknowledged: boolean
+          created_at: string
+          encrypted_secret: string
+          key_hint: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cost_acknowledged?: boolean
+          created_at?: string
+          encrypted_secret: string
+          key_hint?: string
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cost_acknowledged?: boolean
+          created_at?: string
+          encrypted_secret?: string
+          key_hint?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

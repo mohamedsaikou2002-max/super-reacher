@@ -222,13 +222,13 @@
 /* ── Pipeline connector ─────────────────────────────────────────── */
 @utility pipeline-connector {
   position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: -1rem;
-    width: 1px;
-    height: 1rem;
-    background: var(--color-border);
-  }
+}
+@utility pipeline-connector::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -1rem;
+  width: 1px;
+  height: 1rem;
+  background: var(--color-border);
 }
