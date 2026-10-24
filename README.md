@@ -1,3 +1,13 @@
+# SuperReacher — Global Outreach (staged)
+
+**Not production-ready.** This branch integrates an industry-neutral draft studio and user-scoped bring-your-own-API storage into the pre-existing SuperReacher frontend. It preserves the France-sourcing modules that were present in the repository.
+
+Before using provider-key setup, apply the Supabase migration and configure server-only INTEGRATION_VAULT_KEY (32 bytes base64) and SUPABASE_SERVICE_ROLE_KEY. No automatic sending, dialing, messaging, or provider verification is implemented by these new components.
+
+Review [audit](AUDIT_GLOBAL_OUTREACH_2026-10-23.md), [setup guide](GLOBAL_OUTREACH_SETUP.md), and [Muse playbook](MUSE_CHAT_PLAYBOOK.md). This is a reviewed integration of core features, not a byte-for-byte upload of the ZIP; the ZIP includes additional modules and a separate socio-shark application.
+
+---
+
 # Super Reach HTML Emails
 
 ## ReachOS intelligence workbench
