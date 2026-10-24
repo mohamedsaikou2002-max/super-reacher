@@ -31,7 +31,10 @@ async function processCrawlRun(input: { runId: string; userId: string; supabase:
 
   await input.supabase.from("enrichment_runs").update({ status: "running", attempt: 1, started_at: new Date().toISOString(), error: null }).eq("id", run.id);
   try {
-    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, maxPages: input.maxPages, maxDepth: input.maxDepth });
+    const { getCredential } = await import("../integration-vault.server");
+    let personalKey: string | null = null;
+    try { personalKey = await getCredential(input.userId, "firecrawl"); } catch { /* deployment env fallback */ }
+    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, maxPages: input.maxPages, maxDepth: input.maxDepth, ...(personalKey ? { apiKey: personalKey } : {}) });
     const rows = result.pages.map((page) => ({
       business_id: business.id,
       url: page.url,
@@ -67,7 +70,10 @@ export const crawlBusinessWebsite = createServerFn({ method: "POST" })
     if (error || !business) throw new Error("Business not found.");
     if (!business.official_website) throw new Error("This business does not have an official website to crawl.");
 
-    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, maxPages: data.maxPages, maxDepth: data.maxDepth });
+    const { getCredential } = await import("../integration-vault.server");
+    let personalKey: string | null = null;
+    try { personalKey = await getCredential(context.userId, "firecrawl"); } catch { /* deployment env fallback */ }
+    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, maxPages: data.maxPages, maxDepth: data.maxDepth, ...(personalKey ? { apiKey: personalKey } : {}) });
     const rows = result.pages.map((page) => ({
       business_id: business.id,
       url: page.url,

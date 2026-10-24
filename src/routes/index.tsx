@@ -3,25 +3,27 @@ import { useEffect, useState, useCallback, type ReactNode } from "react";
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Brain, Building2,
   ChevronRight, Clipboard, Copy, Database, FileText, Globe2, Inbox,
-  LayoutDashboard, Lock, LogOut, Mail, Menu, MessageSquare,
+  LayoutDashboard, Lock, LogIn, LogOut, Mail, Menu, MessageSquare,
   Phone, Plus, RefreshCw, Search, Send, Server, Settings, Shield,
   Terminal, Users, Wifi, WifiOff, X, Zap,
 } from "lucide-react";
 import { Button } from "@/components/Button";
-import { FranceSourcingPanel } from "@/components/FranceSourcingPanel";
 import { createEmail, markets } from "@/lib/email-templates";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { queueAllBusinessWebsiteCrawls } from "@/lib/intelligence/firecrawl.functions";
 import { REGISTRY_COUNTRY_SUMMARY, REGISTRY_SOURCE_CATALOG } from "@/lib/intelligence/registry";
 import { createAgentJob, runAgentJob, checkEngineHealth } from "@/lib/engine.functions";
+import { GlobalOutreachStudio } from "@/components/GlobalOutreachStudio";
+import { BringYourOwnApi } from "@/components/BringYourOwnApi";
 
 export const Route = createFileRoute("/")(
   {
     head: () => ({
       meta: [
-        { title: "Super Reacher — Executive Intelligence Platform" },
-        { name: "description", content: "Evidence-first AI business intelligence, lead enrichment, and compliant outbound operations." },
-        { property: "og:title", content: "Super Reacher" },
+        { title: "Hyper Reacher — Global Outreach" },
+        { name: "description", content: "Configurable global outreach, lead research and channel-specific workflow drafts for independent sales professionals." },
+        { property: "og:title", content: "Hyper Reacher" },
         { property: "og:type", content: "website" },
       ],
     }),
@@ -38,6 +40,7 @@ type View =
   | "contacts"
   | "research"
   | "outreach"
+  | "email_studio"
   | "inbox"
   | "agents"
   | "sources"
@@ -92,7 +95,8 @@ const NAV: { id: View; label: string; icon: typeof LayoutDashboard; group?: stri
   { id: "businesses",    label: "Businesses",     icon: Building2 },
   { id: "contacts",      label: "Contacts",       icon: MessageSquare },
   { id: "research",      label: "Research",       icon: Brain },
-  { id: "outreach",      label: "Outreach",       icon: Mail },
+  { id: "outreach",      label: "Global Outreach", icon: Globe2 },
+  { id: "email_studio",  label: "HTML Email Studio", icon: Mail },
   { id: "inbox",         label: "Inbox",          icon: Inbox },
   { id: "agents",        label: "Agents",         icon: Terminal },
   { id: "sources",       label: "Sources",        icon: Database },
@@ -107,6 +111,7 @@ const NAV: { id: View; label: string; icon: typeof LayoutDashboard; group?: stri
 function App() {
   const [view, setView]       = useState<View>("overview");
   const [sidebar, setSidebar] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [leads, setLeads]     = useState<Lead[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -168,8 +173,8 @@ function App() {
             <Zap size={14} strokeWidth={2.5} className="text-primary-foreground" />
           </div>
           <div>
-            <div className="text-[13px] font-bold tracking-wide text-foreground">SUPER REACHER</div>
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Intelligence Platform</div>
+            <div className="text-[13px] font-bold tracking-wide text-foreground">HYPER REACHER</div>
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Global Outreach Tool</div>
           </div>
           <button
             className="ml-auto text-muted-foreground hover:text-foreground lg:hidden"
@@ -209,29 +214,29 @@ function App() {
           ))}
         </nav>
 
-        {/* Signed-in account controls */}
-        {userEmail && <div className="shrink-0 border-t border-border p-3">
+        {/* User footer */}
+        <div className="shrink-0 border-t border-border p-3">
           <div className="flex items-center gap-2.5 rounded-md p-2">
             <div className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/20 text-[11px] font-bold text-primary">
-              {userEmail.slice(0, 2).toUpperCase()}
+              {userEmail ? userEmail.slice(0, 2).toUpperCase() : "—"}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[11px] font-semibold text-foreground">
-                {userEmail}
+                {userEmail ?? "Guest workspace"}
               </div>
               <div className="text-[9px] text-muted-foreground">
-                ● Connected
+                {userEmail ? "● Authenticated" : "Sign in to sync"}
               </div>
             </div>
             <button
-              onClick={() => void supabase.auth.signOut()}
+              onClick={async () => (userEmail ? supabase.auth.signOut() : setAuthOpen(true))}
               className="text-muted-foreground hover:text-foreground"
-              aria-label="Sign out"
+              aria-label={userEmail ? "Sign out" : "Sign in"}
             >
-              <LogOut size={14} />
+              {userEmail ? <LogOut size={14} /> : <LogIn size={14} />}
             </button>
           </div>
-        </div>}
+        </div>
       </aside>
 
       {/* Sidebar backdrop */}
@@ -269,30 +274,32 @@ function App() {
 
             <SystemStatusBadge userEmail={userEmail} />
 
-            <CrawlButton enabled={Boolean(userEmail)} />
+            <CrawlButton />
           </div>
         </header>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1600px] p-5">
-            {view === "overview"     && <ViewOverview leads={leads} businesses={businesses} jobs={jobs} />}
-            {view === "leads"        && <ViewLeads leads={leads} setLeads={setLeads} userEmail={userEmail} />}
+            {view === "overview"     && <ViewOverview leads={leads} businesses={businesses} jobs={jobs} userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
+            {view === "leads"        && <ViewLeads leads={leads} setLeads={setLeads} userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
             {view === "businesses"   && <ViewBusinesses businesses={businesses} />}
             {view === "contacts"     && <ViewContacts userEmail={userEmail} />}
             {view === "research"     && <ViewResearch userEmail={userEmail} />}
-            {view === "outreach"     && <ViewOutreach userEmail={userEmail} />}
+            {view === "outreach"     && <GlobalOutreachStudio userEmail={userEmail} />}
+            {view === "email_studio" && <ViewOutreach userEmail={userEmail} />}
             {view === "inbox"        && <ViewInbox />}
-            {view === "agents"       && <ViewAgents jobs={jobs} setJobs={setJobs} userEmail={userEmail} />}
-            {view === "sources"      && <ViewSources userEmail={userEmail} />}
-            {view === "integrations" && <ViewIntegrations />}
+            {view === "agents"       && <ViewAgents jobs={jobs} setJobs={setJobs} userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
+            {view === "sources"      && <ViewSources />}
+            {view === "integrations" && <BringYourOwnApi userEmail={userEmail} />}
             {view === "security"     && <ViewSecurity />}
             {view === "logs"         && <ViewLogs jobs={jobs} />}
-            {view === "settings"     && <ViewSettings userEmail={userEmail} />}
+            {view === "settings"     && <ViewSettings userEmail={userEmail} onSignIn={() => setAuthOpen(true)} />}
           </div>
         </main>
       </div>
 
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </div>
   );
 }
@@ -409,7 +416,7 @@ function SystemStatusBadge({ userEmail }: { userEmail: string | null }) {
   );
 }
 
-function CrawlButton({ enabled }: { enabled: boolean }) {
+function CrawlButton() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg]   = useState("");
 
@@ -425,7 +432,7 @@ function CrawlButton({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Button variant="secondary" size="sm" onClick={handle} disabled={busy || !enabled} title={!enabled ? "Workspace session required" : undefined}>
+      <Button variant="secondary" size="sm" onClick={handle} disabled={busy}>
         <Globe2 size={13} />
         {busy ? "Queueing…" : "Crawl"}
       </Button>
@@ -462,12 +469,53 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+function AuthModal({ onClose }: { onClose: () => void }) {
+  const [mode, setMode]       = useState<"signin" | "signup">("signin");
+  const [email, setEmail]     = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function submit() {
+    const result = mode === "signin"
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password });
+    if (result.error) setMessage(result.error.message);
+    else { setMessage(mode === "signup" ? "Check your inbox to confirm." : "Signed in."); if (mode === "signin") setTimeout(onClose, 500); }
+  }
+
+  async function google() {
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    if (result.error) setMessage(result.error.message);
+  }
+
+  return (
+    <Modal title={mode === "signin" ? "Sign in" : "Create account"} onClose={onClose}>
+      <div className="space-y-3">
+        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+        <Field label="Password"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+        {message && <p className="text-xs text-primary">{message}</p>}
+        <Button className="w-full" onClick={submit}>{mode === "signin" ? "Sign in" : "Create account"}</Button>
+        <div className="flex items-center gap-3 text-[10px] uppercase text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" />
+        </div>
+        <Button className="w-full" variant="secondary" onClick={google}><Globe2 size={13} />Continue with Google</Button>
+        <button
+          className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+        >
+          {mode === "signin" ? "New here? Create account" : "Already have an account? Sign in"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    VIEW: OVERVIEW
 ══════════════════════════════════════════════════════════════ */
 
-function ViewOverview({ leads, businesses, jobs }: {
-  leads: Lead[]; businesses: Business[]; jobs: Job[];
+function ViewOverview({ leads, businesses, jobs, userEmail, onSignIn }: {
+  leads: Lead[]; businesses: Business[]; jobs: Job[]; userEmail: string | null; onSignIn: () => void;
 }) {
   const qualifiedBiz = businesses.filter((b) => b.outreach_eligibility === "eligible" || b.enrichment_status === "complete").length;
   const pending      = leads.filter((l) => l.status === "pending").length;
@@ -492,6 +540,12 @@ function ViewOverview({ leads, businesses, jobs }: {
           <p className="mt-1 max-w-lg text-sm text-muted-foreground">
             Evidence-first AI business intelligence and outreach operations.
           </p>
+          {!userEmail && (
+            <div className="mt-4 flex items-center gap-3">
+              <Button size="sm" onClick={onSignIn}><LogIn size={13} />Sign in to connect</Button>
+              <span className="text-xs text-muted-foreground">Demo data shown. Sign in to see live backend data.</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -580,8 +634,8 @@ function ViewOverview({ leads, businesses, jobs }: {
    VIEW: LEADS
 ══════════════════════════════════════════════════════════════ */
 
-function ViewLeads({ leads, setLeads, userEmail }: {
-  leads: Lead[]; setLeads: (l: Lead[]) => void; userEmail: string | null;
+function ViewLeads({ leads, setLeads, userEmail, onSignIn }: {
+  leads: Lead[]; setLeads: (l: Lead[]) => void; userEmail: string | null; onSignIn: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ business_name: "", contact_name: "", email: "", phone: "", country_code: "US", industry: "" });
@@ -611,7 +665,8 @@ function ViewLeads({ leads, setLeads, userEmail }: {
       {!userEmail && (
         <div className="mb-4 flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs">
           <AlertTriangle size={13} className="shrink-0 text-primary" />
-          <span className="text-muted-foreground">Demo session — changes are temporary and won’t be saved to the cloud.</span>
+          <span className="text-muted-foreground">Demo session — data is not persisted. </span>
+          <button className="font-semibold text-primary hover:underline" onClick={onSignIn}>Sign in</button>
         </div>
       )}
       <DataTable<Lead>
@@ -698,7 +753,7 @@ function ViewContacts({ userEmail }: { userEmail: string | null }) {
       .then(({ data }) => { if (data) setContacts(data as Record<string, unknown>[]); setLoading(false); });
   }, [userEmail]);
 
-  if (!userEmail) return <EmptyState title="Contacts unavailable in this demo workspace" icon={Users} />;
+  if (!userEmail) return <EmptyState title="Sign in to view contacts" icon={Users} />;
   if (loading) return <div className="space-y-2">{Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
 
   return (
@@ -738,7 +793,7 @@ function ViewResearch({ userEmail }: { userEmail: string | null }) {
       .then(({ data }) => { if (data) setEvidence(data as Record<string, unknown>[]); setLoading(false); });
   }, [userEmail]);
 
-  if (!userEmail) return <EmptyState title="Research unavailable in this demo workspace" icon={Brain} />;
+  if (!userEmail) return <EmptyState title="Sign in to view research" icon={Brain} />;
   if (loading) return <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
 
   return (
@@ -853,7 +908,7 @@ function ViewOutreach({ userEmail }: { userEmail: string | null }) {
               title="Email preview"
               className="h-[520px] w-full border-0 bg-white"
               srcDoc={generated.html}
-              sandbox="allow-same-origin"
+              sandbox=""
             />
           ) : (
             <EmptyState
@@ -912,8 +967,8 @@ function ViewInbox() {
    VIEW: AGENTS (Grok Executive Center)
 ══════════════════════════════════════════════════════════════ */
 
-function ViewAgents({ jobs, setJobs, userEmail }: {
-  jobs: Job[]; setJobs: (j: Job[]) => void; userEmail: string | null;
+function ViewAgents({ jobs, setJobs, userEmail, onSignIn }: {
+  jobs: Job[]; setJobs: (j: Job[]) => void; userEmail: string | null; onSignIn: () => void;
 }) {
   const [input, setInput]     = useState("");
   const [agentType, setAgentType] = useState<"research" | "outreach" | "coding" | "creative">("research");
@@ -927,13 +982,13 @@ function ViewAgents({ jobs, setJobs, userEmail }: {
   }, []);
 
   async function submit() {
-    if (!input.trim() || !userEmail) return;
+    if (!input.trim() || !userEmail) { if (!userEmail) onSignIn(); return; }
     setBusy(true);
     try {
-      const { id } = await createAgentJob({ agent_type: agentType, prompt: input, model });
+      const { id } = await createAgentJob({ data: { agent_type: agentType, prompt: input, model } });
       setActiveJobId(id);
       setInput("");
-      const result = await runAgentJob({ jobId: id });
+      const result = await runAgentJob({ data: { jobId: id } });
       // Refresh jobs list
       const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false }).limit(50);
       if (data) setJobs(data as Job[]);
@@ -945,7 +1000,7 @@ function ViewAgents({ jobs, setJobs, userEmail }: {
   const AGENT_MODELS = [
     { id: "llama-3.1-8b-instant", label: "Groq — Llama 3.1 8B (fast)" },
     { id: "openai/gpt-6-astra",   label: "Lovable — GPT-6 Astra" },
-    { id: "gemini-1.5-flash",     label: "Gemini 1.5 Flash" },
+    // Gemini model adapter is not yet connected; do not display it as functional.
   ];
 
   return (
@@ -1029,7 +1084,7 @@ function ViewAgents({ jobs, setJobs, userEmail }: {
           <div className="flex gap-2">
             <input
               className="flex-1 h-9 text-[12px]"
-              placeholder={userEmail ? "Give the agent a task…" : "Workspace required to run agent jobs"}
+              placeholder={userEmail ? "Give the agent a task…" : "Sign in to run agents"}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); }}}
@@ -1041,7 +1096,7 @@ function ViewAgents({ jobs, setJobs, userEmail }: {
           </div>
           {!userEmail && (
             <p className="mt-2 text-[10px] text-muted-foreground">
-              Agent jobs are unavailable in this demo workspace.
+              <button onClick={onSignIn} className="text-primary hover:underline">Sign in</button> to run agent jobs.
             </p>
           )}
         </div>
@@ -1051,7 +1106,7 @@ function ViewAgents({ jobs, setJobs, userEmail }: {
       <div className="space-y-4">
         {/* Provider health */}
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Provider Health</div>
+          <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Provider Configuration</div>
           {health ? (
             <div className="space-y-2">
               {Object.entries(health).map(([name, info]) => (
@@ -1078,13 +1133,13 @@ function ViewAgents({ jobs, setJobs, userEmail }: {
               ["Business research",    true],
               ["Website crawling",     true],
               ["Contact extraction",   true],
-              ["Apollo enrichment",    !!process.env.APOLLO_API_KEY || true],
-              ["Hunter.io enrichment", !!process.env.HUNTER_API_KEY || true],
-              ["Groq inference",       true],
-              ["Lovable AI gateway",   true],
+              ["Apollo enrichment adapter", false],
+              ["Hunter enrichment adapter", false],
+              ["Groq inference (configure key)", Boolean(health?.["groq"]?.healthy)],
+              ["Lovable AI gateway",   Boolean(health?.["lovable"]?.healthy)],
               ["Database queries",     true],
               ["Draft generation",     true],
-              ["Outbound SEND",        false],
+              ["Outbound SEND (manual only)", false],
             ].map(([label, enabled]) => (
               <div key={String(label)} className="flex items-center gap-2 text-xs">
                 <span className={`size-1.5 shrink-0 rounded-full ${enabled ? "bg-muted-foreground" : "bg-border"}`} />
@@ -1113,7 +1168,7 @@ function ViewAgents({ jobs, setJobs, userEmail }: {
    VIEW: SOURCES
 ══════════════════════════════════════════════════════════════ */
 
-function ViewSources({ userEmail }: { userEmail: string | null }) {
+function ViewSources() {
   const [filter, setFilter] = useState("");
   const filtered = REGISTRY_SOURCE_CATALOG.filter(
     (s) => !filter || s.country.toLowerCase().includes(filter.toLowerCase()) || s.source_name.toLowerCase().includes(filter.toLowerCase()),
@@ -1122,7 +1177,6 @@ function ViewSources({ userEmail }: { userEmail: string | null }) {
   return (
     <div>
       <SectionHeader title="Source Registry" sub={`${REGISTRY_SOURCE_CATALOG.length} configured sources across ${REGISTRY_COUNTRY_SUMMARY.countries.length} countries`} />
-      <FranceSourcingPanel userEmail={userEmail} />
       <div className="mb-4">
         <input
           className="max-w-sm h-8 text-[12px]"
@@ -1164,51 +1218,12 @@ function ViewSources({ userEmail }: { userEmail: string | null }) {
    VIEW: INTEGRATIONS
 ══════════════════════════════════════════════════════════════ */
 
-function ViewIntegrations() {
-  const INTEGRATIONS = [
-    { name: "Supabase",   category: "Database",    configured: true,  note: "Postgres + Realtime + Auth" },
-    { name: "Groq",       category: "AI",          configured: true,  note: "Llama 3.1 — fast inference" },
-    { name: "Lovable AI", category: "AI Gateway",  configured: true,  note: "GPT-6 Astra gateway" },
-    { name: "Firecrawl",  category: "Crawler",     configured: false, note: "FIRECRAWL_API_KEY required" },
-    { name: "Hunter.io",  category: "Enrichment",  configured: true,  note: "Email finder + verifier" },
-    { name: "Apollo",     category: "Enrichment",  configured: true,  note: "People match API" },
-    { name: "Gemini",     category: "AI",          configured: false, note: "GEMINI_API_KEY required" },
-    { name: "Twilio",     category: "SMS",         configured: false, note: "SMS provider — not yet configured" },
-    { name: "SMTP/Email", category: "Email",       configured: false, note: "Email provider — not yet configured" },
-    { name: "Tor Proxy",  category: "Research",    configured: false, note: "TOR_SOCKS_PROXY_URL required" },
-  ];
-
-  return (
-    <div>
-      <SectionHeader title="Integrations" sub="Connected providers and API health" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {INTEGRATIONS.map((i) => (
-          <div key={i.name} className={`rounded-lg border p-4 ${i.configured ? "border-border bg-card" : "border-border bg-surface"}`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm font-bold text-foreground">{i.name}</div>
-                <div className="text-[10px] uppercase text-muted-foreground mt-0.5">{i.category}</div>
-              </div>
-              <span className={`size-2 mt-1 shrink-0 rounded-full ${i.configured ? "bg-muted-foreground" : "bg-border"}`} />
-            </div>
-            <div className="mt-2 text-[11px] text-muted-foreground">{i.note}</div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 rounded-lg border border-border bg-surface p-3 text-[11px] text-muted-foreground">
-        <AlertTriangle size={12} className="inline mr-1.5 text-primary" />
-        Provider credentials are loaded from environment variables on the server. Never expose API keys in the frontend.
-      </div>
-    </div>
-  );
-}
-
 /* ═══════════════════════════════════════════════════════════
    VIEW: SECURITY
 ══════════════════════════════════════════════════════════════ */
 
 function ViewSecurity() {
-  const OUTBOUND_DISABLED = false; // Read from backend when OUTBOUND_DISABLED env var is surfaced
+  const OUTBOUND_DISABLED = true; // No live dispatch implemented in this release. Never claim an outbound gateway is active.
 
   return (
     <div className="space-y-5">
@@ -1224,8 +1239,8 @@ function ViewSecurity() {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {OUTBOUND_DISABLED
-                ? "All outbound communication is blocked. AI generation continues for drafting."
-                : "Outbound is active. All messages pass through approval, suppression, and security preflight."}
+                ? "No live dispatch adapter is enabled in this release. Draft generation remains available."
+                : "Dispatch requires a separately audited provider implementation."}
             </p>
           </div>
           <div className={`grid size-12 place-items-center rounded-xl ${OUTBOUND_DISABLED ? "bg-destructive/20" : "bg-surface"}`}>
@@ -1233,7 +1248,7 @@ function ViewSecurity() {
           </div>
         </div>
         <div className="mt-4 text-[10px] text-muted-foreground border-t border-border pt-3">
-          Set <code className="font-mono text-foreground">OUTBOUND_DISABLED=true</code> on the server to globally block all dispatch.
+          This build does not contain a production sending gateway. Review and copy drafts manually; do not rely on a UI indicator as an enforcement control.
         </div>
       </div>
 
@@ -1242,17 +1257,16 @@ function ViewSecurity() {
         <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Security Gates</div>
         <div className="space-y-2">
           {[
-            ["Suppression check",        "ENFORCED",  "Emails/phones on suppression list are never contacted"],
-            ["Approval gate",            "ENFORCED",  "All outbound requires explicit human approval"],
-            ["Content hash verification","ENFORCED",  "Content must not change between approval and dispatch"],
-            ["Eligibility check",        "ENFORCED",  "Contacts must pass outreach_eligibility check"],
-            ["Rate limiting",            "CONFIGURED","Provider-level rate limits applied"],
-            ["Agent outbound access",    "RESTRICTED","Agents cannot directly call Twilio or SMTP"],
-            ["Secret exposure",          "BLOCKED",   "API keys never sent to frontend or AI prompts"],
+            ["Draft-only outbound",       "ENFORCED", "No sending adapters are configured in this release"],
+            ["Human message review",    "REQUIRED", "Review generated drafts before any manual delivery"],
+            ["Suppression list",        "AVAILABLE", "Keep suppression data updated before manually reaching out"],
+            ["Sender permissions",       "REQUIRED", "Verify workplace authorization and platform rules"],
+            ["Rate limiting",            "NOT IMPLEMENTED", "Apply provider-level controls before enabling real dispatch"],
+            ["Provider credentials",     "SERVER",   "BYO API keys use server-only AES-GCM encryption with a private vault key"],
           ].map(([gate, status, desc]) => (
             <div key={String(gate)} className="flex items-start gap-3 rounded-md border border-border p-3">
-              <span className={`mt-0.5 text-[9px] font-bold uppercase shrink-0 ${status === "ENFORCED" || status === "BLOCKED" ? "text-muted-foreground" : "text-primary"}`}>
-                {status === "ENFORCED" ? "✓" : status === "BLOCKED" ? "✕" : "~"} {String(status)}
+              <span className={`mt-0.5 text-[9px] font-bold uppercase shrink-0 ${status === "ENFORCED" || status === "SERVER" ? "text-muted-foreground" : "text-primary"}`}>
+                {status === "ENFORCED" || status === "SERVER" ? "✓" : "~"} {String(status)}
               </span>
               <div>
                 <div className="text-xs font-semibold text-foreground">{String(gate)}</div>
@@ -1321,14 +1335,15 @@ function ViewLogs({ jobs }: { jobs: Job[] }) {
    VIEW: SETTINGS
 ══════════════════════════════════════════════════════════════ */
 
-function ViewSettings({ userEmail }: { userEmail: string | null }) {
+function ViewSettings({ userEmail, onSignIn }: { userEmail: string | null; onSignIn: () => void }) {
   return (
     <div className="max-w-2xl space-y-5">
       <SectionHeader title="Settings" />
 
-      {userEmail && <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Account</div>
-        <div className="space-y-3">
+        {userEmail ? (
+          <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="grid size-9 place-items-center rounded-full bg-primary/20 text-sm font-bold text-primary">
                 {userEmail.slice(0, 2).toUpperCase()}
@@ -1341,15 +1356,21 @@ function ViewSettings({ userEmail }: { userEmail: string | null }) {
             <Button variant="secondary" size="sm" onClick={() => supabase.auth.signOut()}>
               <LogOut size={13} /> Sign out
             </Button>
-        </div>
-      </div>}
+          </div>
+        ) : (
+          <div>
+            <p className="mb-3 text-xs text-muted-foreground">Sign in to sync your workspace to the cloud and enable backend operations.</p>
+            <Button size="sm" onClick={onSignIn}><LogIn size={13} /> Sign in</Button>
+          </div>
+        )}
+      </div>
 
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">Environment</div>
         <div className="space-y-2 text-xs text-muted-foreground">
           <div className="flex justify-between">
             <span>Supabase</span>
-            <span className="text-foreground">{userEmail ? "Connected" : "Demo workspace"}</span>
+            <span className="text-foreground">{userEmail ? "Connected" : "Unauthenticated"}</span>
           </div>
           <div className="flex justify-between">
             <span>Framework</span>
@@ -1364,7 +1385,7 @@ function ViewSettings({ userEmail }: { userEmail: string | null }) {
 
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-[11px] text-muted-foreground">
         <Lock size={12} className="inline mr-1.5 text-primary" />
-        Provider API keys (Groq, Hunter, Apollo) are set via server-side environment variables and are never exposed in the frontend.
+        Set your own credentials from Integrations. The server encrypts BYO API keys with INTEGRATION_VAULT_KEY. Keys are never rendered back to the browser.
       </div>
     </div>
   );

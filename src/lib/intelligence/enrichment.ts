@@ -3,9 +3,10 @@ import { researchFetch } from './research-client';
 
 export class ApolloEnrichmentProvider implements EnrichmentProvider {
   readonly name = 'apollo';
+  constructor(private readonly customerKey?: string) {}
 
   async findProfessionalContact(input: { fullName: string; companyName: string }) {
-    const apiKey = process.env.APOLLO_API_KEY;
+    const apiKey = this.customerKey || process.env["APOLLO_API_KEY"];
     if (!apiKey) {
       throw new Error('APOLLO_API_KEY is not configured.');
     }
@@ -42,7 +43,7 @@ export class ApolloEnrichmentProvider implements EnrichmentProvider {
       email: person.email,
       phone: person.sanitized_phone || null,
       providerRecordId: person.id,
-      confidence: person.email_status === 'verified' ? 'high' : 'medium',
+      confidence: (person.email_status === 'verified' ? 'high' : 'medium') as 'high' | 'medium',
     };
   }
 
@@ -55,9 +56,10 @@ export class ApolloEnrichmentProvider implements EnrichmentProvider {
 
 export class HunterEnrichmentProvider implements EnrichmentProvider {
   readonly name = 'hunter';
+  constructor(private readonly customerKey?: string) {}
 
   async findProfessionalContact(input: { fullName: string; companyName: string }) {
-    const apiKey = process.env.HUNTER_API_KEY;
+    const apiKey = this.customerKey || process.env["HUNTER_API_KEY"];
     if (!apiKey) {
       throw new Error('HUNTER_API_KEY is not configured.');
     }
@@ -84,14 +86,14 @@ export class HunterEnrichmentProvider implements EnrichmentProvider {
       role: data.data?.position || 'unknown',
       email: email,
       phone: data.data?.phone_number || null,
-      confidence: data.data?.score > 80 ? 'high' : 'medium',
+      confidence: (data.data?.score > 80 ? 'high' : 'medium') as 'high' | 'medium',
     };
   }
 
   async verifyContact(input: { email?: string; phone?: string }): Promise<'verified' | 'invalid' | 'unknown'> {
     if (!input.email) return 'unknown';
     
-    const apiKey = process.env.HUNTER_API_KEY;
+    const apiKey = this.customerKey || process.env["HUNTER_API_KEY"];
     if (!apiKey) {
       return 'unknown';
     }
