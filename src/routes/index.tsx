@@ -119,9 +119,9 @@ function App() {
 
   /* Auth */
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null));
+    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.["email"] ?? null));
     const { data } = supabase.auth.onAuthStateChange((_e, s) =>
-      setUserEmail(s?.user.email ?? null),
+      setUserEmail(s?.user["email"] ?? null),
     );
     return () => data.subscription.unsubscribe();
   }, []);
@@ -491,8 +491,8 @@ function AuthModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={mode === "signin" ? "Sign in" : "Create account"} onClose={onClose}>
       <div className="space-y-3">
-        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-        <Field label="Password"><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target["value"])} /></Field>
+        <Field label="Password"><input type="password" value={password} onChange={(e) => setPassword(e.target["value"])} /></Field>
         {message && <p className="text-xs text-primary">{message}</p>}
         <Button className="w-full" onClick={submit}>{mode === "signin" ? "Sign in" : "Create account"}</Button>
         <div className="flex items-center gap-3 text-[10px] uppercase text-muted-foreground">
@@ -620,7 +620,7 @@ function ViewOverview({ leads, businesses, jobs, userEmail, onSignIn }: {
                 <StatusBadge value={j.status} />
                 <span className="text-xs text-muted-foreground capitalize">{j.agent_type}</span>
                 {j.model_used && <span className="text-[10px] text-muted-foreground">{j.model_used}</span>}
-                <span className="ml-auto text-[10px] text-muted-foreground">{j.created_at.slice(0, 10)}</span>
+                <span className="ml-auto text-[10px] text-muted-foreground">{j["created_at"].slice(0, 10)}</span>
               </div>
             ))}
           </div>
@@ -678,22 +678,22 @@ function ViewLeads({ leads, setLeads, userEmail, onSignIn }: {
           { key: "country_code",  label: "Market" },
           { key: "industry",      label: "Industry" },
           { key: "status",        label: "Status", render: (r) => <StatusBadge value={r.status} /> },
-          { key: "created_at",    label: "Added", render: (r) => <span className="text-muted-foreground">{r.created_at.slice(0, 10)}</span> },
+          { key: "created_at",    label: "Added", render: (r) => <span className="text-muted-foreground">{r["created_at"].slice(0, 10)}</span> },
         ]}
       />
       {open && (
         <Modal title="Add Lead" onClose={() => setOpen(false)}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Business name"><input value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} /></Field>
-            <Field label="Contact name"><input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} /></Field>
-            <Field label="Email"><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
-            <Field label="Phone"><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+            <Field label="Business name"><input value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target["value"] })} /></Field>
+            <Field label="Contact name"><input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target["value"] })} /></Field>
+            <Field label="Email"><input type="email" value={form["email"]} onChange={(e) => setForm({ ...form, email: e.target["value"] })} /></Field>
+            <Field label="Phone"><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target["value"] })} /></Field>
             <Field label="Market">
-              <select value={form.country_code} onChange={(e) => setForm({ ...form, country_code: e.target.value })}>
+              <select value={form.country_code} onChange={(e) => setForm({ ...form, country_code: e.target["value"] })}>
                 {markets.map((m) => <option key={m.code} value={m.code}>{m.name}</option>)}
               </select>
             </Field>
-            <Field label="Industry"><input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} /></Field>
+            <Field label="Industry"><input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target["value"] })} /></Field>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
@@ -763,12 +763,12 @@ function ViewContacts({ userEmail }: { userEmail: string | null }) {
         keyField="id"
         rows={contacts}
         cols={[
-          { key: "full_name",          label: "Person", render: (r) => <span className="font-semibold">{String(r.full_name || "—")}</span> },
+          { key: "full_name",          label: "Person", render: (r) => <span className="font-semibold">{String(r["full_name"] || "—")}</span> },
           { key: "role",               label: "Role" },
-          { key: "email",              label: "Email", render: (r) => <span className="font-mono text-[11px]">{String(r.email || "—")}</span> },
+          { key: "email",              label: "Email", render: (r) => <span className="font-mono text-[11px]">{String(r["email"] || "—")}</span> },
           { key: "phone",              label: "Phone" },
-          { key: "verification_status", label: "Verification", render: (r) => <StatusBadge value={String(r.verification_status || "unknown")} /> },
-          { key: "outreach_status",    label: "Outreach", render: (r) => <StatusBadge value={String(r.outreach_status || "review")} /> },
+          { key: "verification_status", label: "Verification", render: (r) => <StatusBadge value={String(r["verification_status"] || "unknown")} /> },
+          { key: "outreach_status",    label: "Outreach", render: (r) => <StatusBadge value={String(r["outreach_status"] || "review")} /> },
         ]}
       />
     </div>
@@ -803,11 +803,11 @@ function ViewResearch({ userEmail }: { userEmail: string | null }) {
         keyField="id"
         rows={evidence}
         cols={[
-          { key: "field",       label: "Field",   render: (r) => <span className="font-mono text-[11px]">{String(r.field)}</span> },
-          { key: "value",       label: "Value",   render: (r) => <span className="max-w-xs truncate block">{String(r.value)}</span> },
-          { key: "confidence",  label: "Confidence", render: (r) => <StatusBadge value={String(r.confidence || "unknown")} /> },
-          { key: "source_url",  label: "Source",  render: (r) => r.source_url ? <a href={String(r.source_url)} target="_blank" rel="noopener noreferrer" className="text-primary text-[10px] hover:underline">[link]</a> : <span className="text-muted-foreground">—</span> },
-          { key: "retrieved_at", label: "Retrieved", render: (r) => <span className="text-muted-foreground">{String(r.retrieved_at || "").slice(0, 10)}</span> },
+          { key: "field",       label: "Field",   render: (r) => <span className="font-mono text-[11px]">{String(r["field"])}</span> },
+          { key: "value",       label: "Value",   render: (r) => <span className="max-w-xs truncate block">{String(r["value"])}</span> },
+          { key: "confidence",  label: "Confidence", render: (r) => <StatusBadge value={String(r["confidence"] || "unknown")} /> },
+          { key: "source_url",  label: "Source",  render: (r) => r["source_url"] ? <a href={String(r["source_url"])} target="_blank" rel="noopener noreferrer" className="text-primary text-[10px] hover:underline">[link]</a> : <span className="text-muted-foreground">—</span> },
+          { key: "retrieved_at", label: "Retrieved", render: (r) => <span className="text-muted-foreground">{String(r["retrieved_at"] || "").slice(0, 10)}</span> },
         ]}
       />
     </div>
@@ -858,16 +858,16 @@ function ViewOutreach({ userEmail }: { userEmail: string | null }) {
         {/* Left: controls */}
         <div className="rounded-lg border border-border bg-card p-5 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Business"><input value={form.business} placeholder="Acme Corp" onChange={(e) => setForm({ ...form, business: e.target.value })} /></Field>
-            <Field label="Contact"><input value={form.contact} placeholder="First name" onChange={(e) => setForm({ ...form, contact: e.target.value })} /></Field>
+            <Field label="Business"><input value={form.business} placeholder="Acme Corp" onChange={(e) => setForm({ ...form, business: e.target["value"] })} /></Field>
+            <Field label="Contact"><input value={form.contact} placeholder="First name" onChange={(e) => setForm({ ...form, contact: e.target["value"] })} /></Field>
             <Field label="Market">
-              <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>
+              <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target["value"] })}>
                 {markets.map((m) => <option key={m.code} value={m.code}>{m.name} — {m.language}</option>)}
               </select>
             </Field>
-            <Field label="Industry"><input value={form.industry} placeholder="Dental, HVAC…" onChange={(e) => setForm({ ...form, industry: e.target.value })} /></Field>
+            <Field label="Industry"><input value={form.industry} placeholder="Dental, HVAC…" onChange={(e) => setForm({ ...form, industry: e.target["value"] })} /></Field>
           </div>
-          <Field label="Sender name"><input value={form.sender} placeholder="Your name + company" onChange={(e) => setForm({ ...form, sender: e.target.value })} /></Field>
+          <Field label="Sender name"><input value={form.sender} placeholder="Your name + company" onChange={(e) => setForm({ ...form, sender: e.target["value"] })} /></Field>
           <div className="flex gap-2 pt-1">
             <Button className="flex-1" onClick={generate}>
               <Zap size={13} /> Generate email
@@ -952,10 +952,10 @@ function ViewInbox() {
           keyField="id"
           rows={events}
           cols={[
-            { key: "event_type", label: "Event",   render: (r) => <StatusBadge value={String(r.event_type)} /> },
+            { key: "event_type", label: "Event",   render: (r) => <StatusBadge value={String(r["event_type"])} /> },
             { key: "channel",    label: "Channel" },
             { key: "provider",   label: "Provider" },
-            { key: "created_at", label: "Time", render: (r) => <span className="text-muted-foreground">{String(r.created_at || "").slice(0, 16)}</span> },
+            { key: "created_at", label: "Time", render: (r) => <span className="text-muted-foreground">{String(r["created_at"] || "").slice(0, 16)}</span> },
           ]}
         />
       )}
@@ -1038,11 +1038,11 @@ function ViewAgents({ jobs, setJobs, userEmail, onSignIn }: {
                   <StatusBadge value={j.status} />
                   <span className="text-muted-foreground capitalize">{j.agent_type}</span>
                   {j.model_used && <span className="text-muted-foreground text-[10px]">• {j.model_used}</span>}
-                  <span className="ml-auto text-[10px] text-muted-foreground">{j.created_at.slice(11, 16)}</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">{j["created_at"].slice(11, 16)}</span>
                 </div>
-                {j.payload?.prompt && (
+                {typeof j.payload?.["prompt"] === "string" && (
                   <div className="text-muted-foreground text-[11px] truncate">
-                    {String(j.payload.prompt).slice(0, 120)}
+                    {String(j.payload["prompt"]).slice(0, 120)}
                   </div>
                 )}
                 {j.result && (
@@ -1065,7 +1065,7 @@ function ViewAgents({ jobs, setJobs, userEmail, onSignIn }: {
           <div className="mb-2 flex gap-2">
             <select
               value={agentType}
-              onChange={(e) => setAgentType(e.target.value as typeof agentType)}
+              onChange={(e) => setAgentType(e.target["value"] as typeof agentType)}
               className="h-7 flex-1 text-[11px]"
             >
               <option value="research">Research</option>
@@ -1075,7 +1075,7 @@ function ViewAgents({ jobs, setJobs, userEmail, onSignIn }: {
             </select>
             <select
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => setModel(e.target["value"])}
               className="h-7 flex-1 text-[11px]"
             >
               {AGENT_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -1086,7 +1086,7 @@ function ViewAgents({ jobs, setJobs, userEmail, onSignIn }: {
               className="flex-1 h-9 text-[12px]"
               placeholder={userEmail ? "Give the agent a task…" : "Sign in to run agents"}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target["value"])}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); }}}
               disabled={busy || !userEmail}
             />
@@ -1182,7 +1182,7 @@ function ViewSources() {
           className="max-w-sm h-8 text-[12px]"
           placeholder="Filter by country or source name…"
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          onChange={(e) => setFilter(e.target["value"])}
         />
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -1318,7 +1318,7 @@ function ViewLogs({ jobs }: { jobs: Job[] }) {
         <div className="space-y-1.5 font-mono text-[11px]">
           {jobs.map((j) => (
             <div key={j.id} className="flex items-start gap-3 rounded-md border border-border bg-card px-4 py-2.5 hover:bg-surface-hover">
-              <span className="text-muted-foreground/60 shrink-0">{j.created_at.slice(0, 19).replace("T", " ")}</span>
+              <span className="text-muted-foreground/60 shrink-0">{j["created_at"].slice(0, 19).replace("T", " ")}</span>
               <StatusBadge value={j.status} />
               <span className="text-muted-foreground capitalize shrink-0">{j.agent_type}</span>
               {j.model_used && <span className="text-muted-foreground/60">{j.model_used}</span>}
