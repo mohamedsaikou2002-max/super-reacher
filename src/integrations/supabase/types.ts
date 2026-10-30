@@ -14,6 +14,694 @@ export type Database = {
   }
   public: {
     Tables: {
+      businesses: {
+        Row: {
+          id: string
+          user_id: string
+          business_name: string
+          country_code: string
+          region_code: string
+          industry: string
+          registration_id: string
+          official_website: string | null
+          website_status: string
+          enrichment_status: string
+          outreach_eligibility: string
+          discovered_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          business_name: string
+          country_code?: string
+          region_code?: string
+          industry?: string
+          registration_id?: string
+          official_website?: string | null
+          website_status?: string
+          enrichment_status?: string
+          outreach_eligibility?: string
+          discovered_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          business_name?: string
+          country_code?: string
+          region_code?: string
+          industry?: string
+          registration_id?: string
+          official_website?: string | null
+          website_status?: string
+          enrichment_status?: string
+          outreach_eligibility?: string
+          discovered_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      business_sources: {
+        Row: {
+          id: string
+          business_id: string
+          source_system: string
+          source_url: string | null
+          source_record_id: string | null
+          raw_data: Json
+          retrieved_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          source_system: string
+          source_url?: string | null
+          source_record_id?: string | null
+          raw_data?: Json
+          retrieved_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          source_system?: string
+          source_url?: string | null
+          source_record_id?: string | null
+          raw_data?: Json
+          retrieved_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_sources_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_pages: {
+        Row: {
+          id: string
+          business_id: string
+          url: string
+          canonical_url: string
+          title: string
+          content: string
+          content_hash: string
+          http_status: number | null
+          crawl_status: string
+          crawled_at: string | null
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          url: string
+          canonical_url: string
+          title?: string
+          content?: string
+          content_hash?: string
+          http_status?: number | null
+          crawl_status?: string
+          crawled_at?: string | null
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          url?: string
+          canonical_url?: string
+          title?: string
+          content?: string
+          content_hash?: string
+          http_status?: number | null
+          crawl_status?: string
+          crawled_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_pages_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          id: string
+          business_id: string
+          full_name: string
+          role: string
+          email: string
+          phone: string
+          contact_type: string
+          verification_status: string
+          outreach_status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          full_name?: string
+          role?: string
+          email?: string
+          phone?: string
+          contact_type?: string
+          verification_status?: string
+          outreach_status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          full_name?: string
+          role?: string
+          email?: string
+          phone?: string
+          contact_type?: string
+          verification_status?: string
+          outreach_status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_sources: {
+        Row: {
+          id: string
+          contact_id: string
+          source: string
+          source_url: string | null
+          evidence: string
+          confidence: string
+          provider: string | null
+          provider_record_id: string | null
+          retrieved_at: string
+        }
+        Insert: {
+          id?: string
+          contact_id: string
+          source: string
+          source_url?: string | null
+          evidence?: string
+          confidence?: string
+          provider?: string | null
+          provider_record_id?: string | null
+          retrieved_at?: string
+        }
+        Update: {
+          id?: string
+          contact_id?: string
+          source?: string
+          source_url?: string | null
+          evidence?: string
+          confidence?: string
+          provider?: string | null
+          provider_record_id?: string | null
+          retrieved_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_sources_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrichment_runs: {
+        Row: {
+          id: string
+          user_id: string
+          business_id: string
+          type: string
+          status: string
+          attempt: number
+          error: string | null
+          started_at: string | null
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          business_id: string
+          type: string
+          status?: string
+          attempt?: number
+          error?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          business_id?: string
+          type?: string
+          status?: string
+          attempt?: number
+          error?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_runs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_results: {
+        Row: {
+          id: string
+          business_id: string
+          provider: string
+          model: string
+          result: Json
+          status: string
+          retrieved_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          provider: string
+          model?: string
+          result?: Json
+          status?: string
+          retrieved_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          provider?: string
+          model?: string
+          result?: Json
+          status?: string
+          retrieved_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_results_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_evidence: {
+        Row: {
+          id: string
+          business_id: string
+          field: string
+          value: string
+          source_url: string | null
+          evidence: string
+          confidence: string
+          retrieved_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          field: string
+          value: string
+          source_url?: string | null
+          evidence?: string
+          confidence?: string
+          retrieved_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          field?: string
+          value?: string
+          source_url?: string | null
+          evidence?: string
+          confidence?: string
+          retrieved_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_evidence_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppressions: {
+        Row: {
+          id: string
+          user_id: string
+          email: string
+          phone: string
+          channel: string
+          reason: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email?: string
+          phone?: string
+          channel?: string
+          reason: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          email?: string
+          phone?: string
+          channel?: string
+          reason?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      outreach_events: {
+        Row: {
+          id: string
+          user_id: string
+          business_id: string | null
+          contact_id: string | null
+          channel: string
+          event_type: string
+          provider: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          business_id?: string | null
+          contact_id?: string | null
+          channel: string
+          event_type: string
+          provider?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          business_id?: string | null
+          contact_id?: string | null
+          channel?: string
+          event_type?: string
+          provider?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phone_numbers: {
+        Row: {
+          id: string
+          user_id: string
+          country_code: string
+          phone_number: string
+          provider: string
+          status: string
+          capabilities: Json
+          routing: Json
+          last_used_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          country_code: string
+          phone_number: string
+          provider?: string
+          status?: string
+          capabilities?: Json
+          routing?: Json
+          last_used_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          country_code?: string
+          phone_number?: string
+          provider?: string
+          status?: string
+          capabilities?: Json
+          routing?: Json
+          last_used_at?: string | null
+        }
+        Relationships: []
+      }
+      source_policies: {
+        Row: {
+          id: string
+          source: string
+          tor_allowed: boolean
+          direct_allowed: boolean
+          requires_manual_review: boolean
+          robots_status: string
+          terms_status: string
+          rate_limit: string | null
+          captcha_detected: boolean
+          last_access: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          source: string
+          tor_allowed?: boolean
+          direct_allowed?: boolean
+          requires_manual_review?: boolean
+          robots_status?: string
+          terms_status?: string
+          rate_limit?: string | null
+          captcha_detected?: boolean
+          last_access?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          source?: string
+          tor_allowed?: boolean
+          direct_allowed?: boolean
+          requires_manual_review?: boolean
+          robots_status?: string
+          terms_status?: string
+          rate_limit?: string | null
+          captcha_detected?: boolean
+          last_access?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      research_requests_log: {
+        Row: {
+          id: string
+          request_id: string
+          worker_id: string
+          source: string
+          destination_domain: string
+          egress_mode: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          worker_id: string
+          source: string
+          destination_domain: string
+          egress_mode: string
+          status: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          worker_id?: string
+          source?: string
+          destination_domain?: string
+          egress_mode?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      raw_businesses: {
+        Row: {
+          id: string
+          user_id: string
+          business_name: string
+          country_code: string
+          industry: string
+          address: string
+          source: string
+          raw_source_url: string
+          source_record_id: string
+          raw_payload: Json
+          fetched_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          business_name: string
+          country_code: string
+          industry?: string
+          address?: string
+          source: string
+          raw_source_url: string
+          source_record_id: string
+          raw_payload?: Json
+          fetched_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          business_name?: string
+          country_code?: string
+          industry?: string
+          address?: string
+          source?: string
+          raw_source_url?: string
+          source_record_id?: string
+          raw_payload?: Json
+          fetched_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      curated_leads: {
+        Row: {
+          id: string
+          user_id: string
+          raw_business_id: string
+          business_id: string
+          niche_tag: string
+          relevance_score: number
+          relevance_note: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          raw_business_id: string
+          business_id: string
+          niche_tag?: string
+          relevance_score?: number
+          relevance_note?: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          raw_business_id?: string
+          business_id?: string
+          niche_tag?: string
+          relevance_score?: number
+          relevance_note?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curated_leads_raw_business_id_fkey"
+            columns: ["raw_business_id"]
+            isOneToOne: false
+            referencedRelation: "raw_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_leads_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_dispatches: {
+        Row: {
+          id: string
+          user_id: string
+          contact_id: string
+          subject: string
+          status: string
+          provider_message_id: string | null
+          error_code: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          user_id: string
+          contact_id: string
+          subject: string
+          status?: string
+          provider_message_id?: string | null
+          error_code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          contact_id?: string
+          subject?: string
+          status?: string
+          provider_message_id?: string | null
+          error_code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_dispatches_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       approval_requests: {
         Row: {
           approved: boolean
@@ -433,6 +1121,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          business_id: string | null
           business_name: string
           campaign_id: string | null
           contact_name: string
@@ -447,6 +1136,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_id?: string | null
           business_name: string
           campaign_id?: string | null
           contact_name?: string
@@ -461,6 +1151,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_id?: string | null
           business_name?: string
           campaign_id?: string | null
           contact_name?: string
@@ -475,6 +1166,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_campaign_id_fkey"
             columns: ["campaign_id"]
