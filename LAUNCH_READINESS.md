@@ -34,3 +34,8 @@ This document describes **checks**, not evidence that a production deployment ex
 - Check error logs without exposing credentials or recipient personal data.
 
 **Release rule:** do not publish this as a fully functional automated outreach service until build, backend, schema, provider and compliance gates pass. A draft-only beta can ship earlier with transparent feature limits and properly secured authentication.
+
+## Security hardening included in follow-up branch
+- Self-hosted engine URLs and direct research fetches now require admin-set exact HTTPS host allowlists, disallow IP-literal/local destinations and reject redirects. Default behavior is to deny unconfigured egress. Deploy an egress firewall that blocks private/metadata IPs even if trusted DNS unexpectedly resolves internally.
+- The self-hosted engine key is read only from `SELF_HOSTED_ENGINE_API_KEY`, not the legacy database plaintext column. Rotate any previously stored engine secrets.
+- Tor research is **disabled** until a compatible, audited transport is available. Previously assuming a SOCKS Proxy Agent was an Undici dispatcher was unsafe.

@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { z } from "zod";
+import { parseHostAllowlist, trustedEngineEndpoint } from "./network-policy";
 
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 import { renderDemo } from "./engine/demo-render";
@@ -56,7 +57,8 @@ async function loadSettings(
     allow_remote_gpu: data?.allow_remote_gpu ?? false,
     require_cost_approval: data?.require_cost_approval ?? true,
     engine_base_url: (data?.engine_base_url ?? "").replace(/\/+$/, ""),
-    engine_api_key: data?.engine_api_key ?? "",
+    // Legacy DB-stored plaintext credentials are intentionally ignored.
+    engine_api_key: process.env["SELF_HOSTED_ENGINE_API_KEY"] ?? "",
     engine_enabled: data?.engine_enabled ?? false,
   };
 }
@@ -67,8 +69,11 @@ async function callSelfHostedEngine(
   system: string,
   prompt: string,
 ): Promise<{ text: string; provider: string; model: string; cost: number }> {
-  const res = await fetch(`${settings.engine_base_url}/api/ai/complete`, {
+  const endpoint = trustedEngineEndpoint(settings.engine_base_url, "/api/ai/complete", parseHostAllowlist(process.env["SELF_HOSTED_ENGINE_ALLOWED_HOSTS"]));
+  const res = await fetch(endpoint, {
     method: "POST",
+    redirect: "error",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       "Content-Type": "application/json",
       ...(settings.engine_api_key ? { "x-api-key": settings.engine_api_key } : {}),
@@ -173,8 +178,11 @@ export const checkEngineHealth = createServerFn({ method: "POST" })
       let healthy = false;
       let detail = "unreachable";
       try {
-        const res = await fetch(`${settings.engine_base_url}/api/health`, {
+        const endpoint = trustedEngineEndpoint(settings.engine_base_url, "/api/health", parseHostAllowlist(process.env["SELF_HOSTED_ENGINE_ALLOWED_HOSTS"]));
+        const res = await fetch(endpoint, {
           headers: settings.engine_api_key ? { "x-api-key": settings.engine_api_key } : {},
+          redirect: "error",
+          signal: AbortSignal.timeout(8_000),
         });
         healthy = res.ok;
         detail = res.ok ? "self-hosted engine online" : `HTTP ${res.status}`;
@@ -205,9 +213,11 @@ export const runAgentJob = createServerFn({ method: "POST" })
     const { data: job, error } = await supabase
       .from("jobs")
       .select("*")
+      .eq("user_id", userId)
       .eq("id", data.jobId)
       .maybeSingle();
     if (error || !job) throw new Error("Job not found");
+    if (!["pending", "awaiting_approval"].includes(job.status)) throw new Error("Job is not runnable.");
 
     const settings = await loadSettings(supabase as never, userId);
     const payload = (job.payload ?? {}) as { prompt?: string; model?: string };
