@@ -223,7 +223,8 @@
 @utility pipeline-connector {
   position: relative;
 }
-@utility pipeline-connector::after {
+@layer utilities {
+  .pipeline-connector::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -231,4 +232,5 @@
   width: 1px;
   height: 1rem;
   background: var(--color-border);
+  }
 }
