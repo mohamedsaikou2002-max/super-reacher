@@ -34,7 +34,7 @@ async function processCrawlRun(input: { runId: string; userId: string; supabase:
     const { getCredential } = await import("../integration-vault.server");
     let personalKey: string | null = null;
     try { personalKey = await getCredential(input.userId, "firecrawl"); } catch { /* deployment env fallback */ }
-    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, maxPages: input.maxPages, maxDepth: input.maxDepth, ...(personalKey ? { apiKey: personalKey } : {}) });
+    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, ...(input.maxPages !== undefined ? { maxPages: input.maxPages } : {}), ...(input.maxDepth !== undefined ? { maxDepth: input.maxDepth } : {}), ...(personalKey ? { apiKey: personalKey } : {}) });
     const rows = result.pages.map((page) => ({
       business_id: business.id,
       url: page.url,
@@ -73,7 +73,7 @@ export const crawlBusinessWebsite = createServerFn({ method: "POST" })
     const { getCredential } = await import("../integration-vault.server");
     let personalKey: string | null = null;
     try { personalKey = await getCredential(context.userId, "firecrawl"); } catch { /* deployment env fallback */ }
-    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, maxPages: data.maxPages, maxDepth: data.maxDepth, ...(personalKey ? { apiKey: personalKey } : {}) });
+    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, ...(data.maxPages !== undefined ? { maxPages: data.maxPages } : {}), ...(data.maxDepth !== undefined ? { maxDepth: data.maxDepth } : {}), ...(personalKey ? { apiKey: personalKey } : {}) });
     const rows = result.pages.map((page) => ({
       business_id: business.id,
       url: page.url,
@@ -124,4 +124,4 @@ export const queueAllBusinessWebsiteCrawls = createServerFn({ method: "POST" })
 export const runBusinessWebsiteCrawl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RunInput.parse(input))
-  .handler(async ({ data, context }) => processCrawlRun({ runId: data.runId, userId: context.userId, supabase: context.supabase as any, maxPages: data.maxPages, maxDepth: data.maxDepth }));
+  .handler(async ({ data, context }) => processCrawlRun({ runId: data.runId, userId: context.userId, supabase: context.supabase as any, ...(data.maxPages !== undefined ? { maxPages: data.maxPages } : {}), ...(data.maxDepth !== undefined ? { maxDepth: data.maxDepth } : {}) }));

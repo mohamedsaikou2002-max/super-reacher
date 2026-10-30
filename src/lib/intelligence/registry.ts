@@ -128,7 +128,6 @@ const CANADA_SOURCES: RegistrySource[] = [
     source_url: "https://ised-isde.canada.ca/site/corporations-canada/en/data-services",
     source_type: "public_dataset",
     search_url: "https://ised-isde.canada.ca/cc/lgcy/fdrlCrpSrch.html?locale=en",
-    api_url: undefined,
     documentation_url: "https://ised-isde.canada.ca/site/corporations-canada/en/data-services",
     authentication_required: false,
     anonymous_access: true,

@@ -77,9 +77,10 @@ export async function crawlOfficialWebsite(input: {
   if (!response.ok) throw new Error(`Firecrawl crawl request failed with HTTP ${response.status}.`);
   let body = (await response.json()) as FirecrawlCrawlResponse;
   if (body.id && !body.data?.length && body.status !== "completed") {
+    const crawlId = body.id;
     for (let attempt = 0; attempt < 30; attempt += 1) {
       await sleep(1000);
-      const statusResponse = await fetch(`https://api.firecrawl.dev/v2/crawl/${encodeURIComponent(body.id)}`, { headers: firecrawlHeaders(input.apiKey) });
+      const statusResponse = await fetch(`https://api.firecrawl.dev/v2/crawl/${encodeURIComponent(crawlId)}`, { headers: firecrawlHeaders(input.apiKey) });
       if (!statusResponse.ok) throw new Error(`Firecrawl crawl status failed with HTTP ${statusResponse.status}.`);
       body = (await statusResponse.json()) as FirecrawlCrawlResponse;
       if (body.status === "completed" || body.status === "failed" || body.status === "cancelled") break;
@@ -91,5 +92,5 @@ export async function crawlOfficialWebsite(input: {
   const pages = (body.data ?? [])
     .map((document) => pageFromDocument(document, officialWebsite))
     .filter((page): page is CrawledPage => Boolean(page));
-  return { pages, crawlId: body.id };
+  return { pages, ...(body.id ? { crawlId: body.id } : {}) };
 }
