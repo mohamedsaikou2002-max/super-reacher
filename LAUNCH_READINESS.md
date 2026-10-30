@@ -39,3 +39,11 @@ This document describes **checks**, not evidence that a production deployment ex
 - Self-hosted engine URLs and direct research fetches now require admin-set exact HTTPS host allowlists, disallow IP-literal/local destinations and reject redirects. Default behavior is to deny unconfigured egress. Deploy an egress firewall that blocks private/metadata IPs even if trusted DNS unexpectedly resolves internally.
 - The self-hosted engine key is read only from `SELF_HOSTED_ENGINE_API_KEY`, not the legacy database plaintext column. Rotate any previously stored engine secrets.
 - Tor research is **disabled** until a compatible, audited transport is available. Previously assuming a SOCKS Proxy Agent was an Undici dispatcher was unsafe.
+
+## Optional restricted live email path (NOT active until configured)
+- Added a **single-message**, user-approved Resend adapter. `OUTBOUND_ENABLED` defaults to false and the authenticated user ID must appear in `OUTBOUND_APPROVED_USERS`. A verified sending domain and provider API key are mandatory.
+- Apply `supabase/migrations/20261030000000_approved_outbound_email.sql` after the existing schema migrations. This adds a server-only reservation RPC with serializable per-user limit checks, suppression checks, and 7-day per-contact cooldown. Production send maximum is 25/email owner/day.
+- Configure `PUBLIC_APP_URL` as the exact public HTTPS origin and `UNSUBSCRIBE_SIGNING_SECRET` as a long random secret. The signed unsubscribe endpoint is `/api/unsubscribe`, with GET confirmation and POST opt-out.
+- Configure Resend webhook delivery to `/api/resend-webhook` and store its `whsec_...` signing secret as `RESEND_WEBHOOK_SECRET`. Verify request signatures and deliverability events in staging before any real use.
+- Sender must explicitly choose a **verified and eligible** CRM contact and approve each draft. The backend independently verifies contact/business ownership, contact verification/eligibility and opt-outs.
+- This is not a bulk campaign engine; provider/webhook integration and the new SQL migration are **not live-tested**. Enable only after passing all build, database, domain-authentication, security, and real-provider smoke tests.

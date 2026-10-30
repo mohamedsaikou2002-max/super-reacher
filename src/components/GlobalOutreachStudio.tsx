@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ClipboardCopy, Globe2, Save, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/Button";
 import { supabase } from "@/integrations/supabase/client";
+import { ApprovedEmailSender } from "./ApprovedEmailSender";
 import { markets } from "@/lib/email-templates";
 import { lookupProfessionalContact } from "@/lib/prospect-lookup.functions";
 import {
@@ -167,6 +168,7 @@ export function GlobalOutreachStudio({ userEmail }: { userEmail: string | null }
         </> : <p className="text-xs text-muted-foreground">Select your industry, enter your offer, choose a preferred channel, and generate a draft. No messages will be sent.</p>}
         {status && <p role="status" className="text-xs text-muted-foreground">{status}</p>}
       </section>
+      <ApprovedEmailSender userEmail={userEmail} draft={draft}/>
     </div>
   );
 }
