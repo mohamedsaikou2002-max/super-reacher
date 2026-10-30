@@ -13,10 +13,10 @@ async function curateWithGroq(query: string, records: Array<Record<string, any>>
   const key = process.env["GROQ_API_KEY"];
   if (!key) throw new Error("GROQ_API_KEY is not configured.");
   const compact = records.map((row) => ({
-    source_record_id: row.source_record_id,
-    business_name: row.business_name,
-    industry: row.industry,
-    address: row.address,
+    source_record_id: row["source_record_id"],
+    business_name: row["business_name"],
+    industry: row["industry"],
+    address: row["address"],
   }));
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -44,8 +44,8 @@ async function curateWithGroq(query: string, records: Array<Record<string, any>>
     relevance_score: z.number().int().min(0).max(100), relevance_note: z.string().max(500),
   });
   const results = z.array(itemSchema).parse(parsed.results);
-  const allowedIds = new Set(records.map((row) => String(row.source_record_id)));
-  return results.filter((item) => allowedIds.has(item.source_record_id));
+  const allowedIds = new Set(records.map((row) => String(row["source_record_id"])));
+  return results.filter((item) => allowedIds.has(item["source_record_id"]));
 }
 
 export const curateFranceRawBusinesses = createServerFn({ method: "POST" })
@@ -61,20 +61,20 @@ export const curateFranceRawBusinesses = createServerFn({ method: "POST" })
     if (!records?.length) return { examined: 0, curated: 0, rejected: 0 };
 
     const decisions = await curateWithGroq(data.query, records);
-    const byId = new Map(decisions.map((decision) => [decision.source_record_id, decision]));
+    const byId = new Map(decisions.map((decision) => [decision["source_record_id"], decision]));
     let curated = 0;
     let rejected = 0;
     for (const raw of records) {
-      const decision = byId.get(String(raw.source_record_id));
+      const decision = byId.get(String(raw["source_record_id"]));
       if (!decision) continue;
       let { data: business, error: businessLookupError } = await supabase.from("businesses")
         .select("id").eq("user_id", context.userId).eq("country_code", "FR")
-        .eq("registration_id", raw.source_record_id).maybeSingle();
+        .eq("registration_id", raw["source_record_id"]).maybeSingle();
       if (businessLookupError) throw new Error(businessLookupError.message);
       if (!business) {
         const inserted = await supabase.from("businesses").insert({
-          user_id: context.userId, business_name: raw.business_name, country_code: "FR",
-          industry: raw.industry, registration_id: raw.source_record_id,
+          user_id: context.userId, business_name: raw["business_name"], country_code: "FR",
+          industry: raw["industry"], registration_id: raw["source_record_id"],
           enrichment_status: "pending", outreach_eligibility: "review",
         }).select("id").single();
         if (inserted.error || !inserted.data) throw new Error(inserted.error?.message ?? "Could not create the business record.");
@@ -82,7 +82,7 @@ export const curateFranceRawBusinesses = createServerFn({ method: "POST" })
       }
       const source = await supabase.from("business_sources").upsert({
         business_id: business.id, source_system: "france-open-company-search",
-        source_url: raw.raw_source_url, source_record_id: raw.source_record_id,
+        source_url: raw.raw_source_url, source_record_id: raw["source_record_id"],
         raw_data: raw.raw_payload,
       }, { onConflict: "business_id,source_system,source_record_id" });
       if (source.error) throw new Error(source.error.message);

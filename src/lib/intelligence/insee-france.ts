@@ -20,14 +20,14 @@ function nonEmpty(...values: unknown[]): string {
 }
 
 export function mapFrenchCompany(record: Record<string, any>, fetchedAt = new Date().toISOString()): RawFranceBusiness | null {
-  const headquarters = record.siege ?? {};
-  const id = nonEmpty(record.siren, headquarters.siret);
-  const name = nonEmpty(record.nom_complet, record.nom_raison_sociale);
+  const headquarters = record["siege"] ?? {};
+  const id = nonEmpty(record["siren"], headquarters.siret);
+  const name = nonEmpty(record["nom_complet"], record["nom_raison_sociale"]);
   if (!id || !name) return null;
   return {
     business_name: name,
     country_code: "FR",
-    industry: nonEmpty(record.activite_principale, record.section_activite_principale),
+    industry: nonEmpty(record["activite_principale"], record["section_activite_principale"]),
     address: nonEmpty(headquarters.adresse),
     source: "api",
     raw_source_url: API_URL,
