@@ -115,7 +115,15 @@ export function GlobalRegistryPanel({ userEmail }: { userEmail: string | null })
         <Button
           type="submit"
           size="sm"
-          disabled={!userEmail || loading || !(query.trim().length >= 2 || (country === "GB" && query.trim() === "*" && /^[0-9]{5}$/.test(industryCode))) || source.mode !== "live_api"}
+          disabled={
+            !userEmail ||
+            loading ||
+            !(
+              query.trim().length >= 2 ||
+              (country === "GB" && query.trim() === "*" && /^[0-9]{5}$/.test(industryCode))
+            ) ||
+            source.mode !== "live_api"
+          }
         >
           Search registry
         </Button>
