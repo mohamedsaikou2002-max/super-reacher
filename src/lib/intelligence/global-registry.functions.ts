@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { searchLiveRegistry } from "./registry-adapters.server";
+import type { Json } from "@/integrations/supabase/types";
 import { REGISTRY_ACCESS } from "./registry-datasets";
 
 const LiveInput = z.object({
@@ -24,7 +25,7 @@ export const searchAndStoreGlobalBusinesses = createServerFn({ method: "POST" })
       country_code: data.country, industry: String(item.source_data["sic_codes"] ?? item.source_data["activite_principale"] ?? ""),
       address: String(item.source_data["address"] ?? item.source_data["registered_office_address"] ?? ""),
       source: "api" as const, raw_source_url: item.registry_url ?? REGISTRY_ACCESS[data.country].source,
-      source_record_id: item.registration_id, raw_payload: item.source_data,
+      source_record_id: item.registration_id, raw_payload: item.source_data as unknown as Json,
     }));
     const { data: saved, error } = await context.supabase.from("raw_businesses")
       .upsert(rows, { onConflict: "user_id,country_code,source,source_record_id" })

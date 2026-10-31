@@ -18,7 +18,7 @@ export type RegistrySourceType =
 
 export type RegistrySource = {
   id: string;
-  country: "FR" | "DE" | "CA" | "SG" | "US" | "IT";
+  country: "FR" | "GB" | "DE" | "CA" | "SG" | "US" | "IT";
   region?: string;
   state?: string;
   source_name: string;
@@ -79,6 +79,26 @@ const FRANCE_SOURCES: RegistrySource[] = [
   },
 ];
 
+const UNITED_KINGDOM_SOURCES: RegistrySource[] = [
+  {
+    id: "gb-companies-house",
+    country: "GB",
+    source_name: "Companies House public data API",
+    source_url: "https://developer.company-information.service.gov.uk/",
+    source_type: "public_api",
+    api_url: "https://api.company-information.service.gov.uk/advanced-search/companies",
+    documentation_url: "https://developer-specs.company-information.service.gov.uk/companies-house-public-data-api/reference/search/advanced-company-search",
+    authentication_required: true,
+    anonymous_access: false,
+    crawl_status: "available",
+    robots_status: "restricted",
+    terms_status: "unknown",
+    commercial_use_status: "unknown",
+    rate_limit: "Provider throttling; handle HTTP 429 and access conditions",
+    verification_notes: "Live company-name and SIC search through server-only COMPANIES_HOUSE_API_KEY; this is not unrestricted bulk export. Outreach eligibility is separate.",
+    source_family: ["Companies House", "UK SIC"],
+  },
+];
 const GERMANY_SOURCES: RegistrySource[] = [
   {
     id: "de-unternehmensregister",
@@ -492,6 +512,7 @@ const ITALY_SOURCES: RegistrySource[] = [
 
 export const REGISTRY_SOURCE_CATALOG: RegistrySource[] = [
   ...FRANCE_SOURCES,
+  ...UNITED_KINGDOM_SOURCES,
   ...GERMANY_SOURCES,
   ...ITALY_SOURCES,
   ...CANADA_SOURCES,
@@ -500,10 +521,11 @@ export const REGISTRY_SOURCE_CATALOG: RegistrySource[] = [
 ];
 
 export const REGISTRY_COUNTRY_SUMMARY = {
-  countries: ["FR", "DE", "IT", "CA", "SG", "US"],
+  countries: ["FR", "GB", "DE", "IT", "CA", "SG", "US"],
   totalSources: REGISTRY_SOURCE_CATALOG.length,
   usStatesCovered: US_STATE_REGISTRY_SOURCES.length,
   franceSources: FRANCE_SOURCES.length,
+  unitedKingdomSources: UNITED_KINGDOM_SOURCES.length,
   germanySources: GERMANY_SOURCES.length,
   italySources: ITALY_SOURCES.length,
   canadaSources: CANADA_SOURCES.length,
