@@ -34,22 +34,30 @@ describe("ResearchHttpClient restricted routing", () => {
   it("blocks external hosts that are not on the operator allowlist", async () => {
     const mock = vi.fn().mockResolvedValue(new Response("ok"));
     globalThis.fetch = mock;
-    await expect(researchFetch("https://api.twilio.com/v1/Messages", undefined, {
-      sourcePolicy: { ...allowed, tor_allowed: true },
-    })).rejects.toThrow(/allowlist/);
+    await expect(
+      researchFetch("https://api.twilio.com/v1/Messages", undefined, {
+        sourcePolicy: { ...allowed, tor_allowed: true },
+      }),
+    ).rejects.toThrow(/allowlist/);
     expect(mock).not.toHaveBeenCalled();
   });
   it("fails closed instead of using an unverified Tor adapter", async () => {
-    await expect(researchFetch("https://example.com", undefined, {
-      sourcePolicy: { ...allowed, direct_allowed: false, tor_allowed: true },
-    })).rejects.toThrow(/blocks direct research/);
+    await expect(
+      researchFetch("https://example.com", undefined, {
+        sourcePolicy: { ...allowed, direct_allowed: false, tor_allowed: true },
+      }),
+    ).rejects.toThrow(/blocks direct research/);
   });
   it("blocks manually reviewed and CAPTCHA-protected sources", async () => {
-    await expect(researchFetch("https://example.com", undefined, {
-      sourcePolicy: { ...allowed, requires_manual_review: true },
-    })).rejects.toThrow(/Source policy blocks direct research/);
-    await expect(researchFetch("https://example.com", undefined, {
-      sourcePolicy: { ...allowed, captcha_detected: true },
-    })).rejects.toThrow(/Source policy blocks direct research/);
+    await expect(
+      researchFetch("https://example.com", undefined, {
+        sourcePolicy: { ...allowed, requires_manual_review: true },
+      }),
+    ).rejects.toThrow(/Source policy blocks direct research/);
+    await expect(
+      researchFetch("https://example.com", undefined, {
+        sourcePolicy: { ...allowed, captcha_detected: true },
+      }),
+    ).rejects.toThrow(/Source policy blocks direct research/);
   });
 });

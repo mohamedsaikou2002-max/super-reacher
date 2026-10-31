@@ -22,18 +22,27 @@ export type ResearchRequestOptions = {
  * RESEARCH_ALLOWED_HOSTS must contain ONLY administrator-approved DNS zones.
  */
 export async function researchFetch(
-  url: string, init?: RequestInit, options?: ResearchRequestOptions,
+  url: string,
+  init?: RequestInit,
+  options?: ResearchRequestOptions,
 ): Promise<Response> {
   const normalizedUrl = normalizeUrl(url);
   if (!normalizedUrl) throw new Error("Invalid research URL.");
   const policy = options?.sourcePolicy;
-  if (policy?.captcha_detected || policy?.requires_manual_review ||
-      (policy && !policy.direct_allowed) || process.env["RESEARCH_EGRESS_MODE"] === "BLOCKED") {
+  if (
+    policy?.captcha_detected ||
+    policy?.requires_manual_review ||
+    (policy && !policy.direct_allowed) ||
+    process.env["RESEARCH_EGRESS_MODE"] === "BLOCKED"
+  ) {
     throw new Error("Source policy blocks direct research.");
   }
   // Tor is intentionally not offered here. Previous implementation passed
   // SocksProxyAgent as an undici Dispatcher; that assumption was unverified.
-  if (process.env["RESEARCH_EGRESS_MODE"] === "TOR" || (policy?.tor_allowed && !policy.direct_allowed)) {
+  if (
+    process.env["RESEARCH_EGRESS_MODE"] === "TOR" ||
+    (policy?.tor_allowed && !policy.direct_allowed)
+  ) {
     throw new Error("Tor research transport is disabled pending an audited adapter.");
   }
   const target = validateTrustedHttpsUrl(

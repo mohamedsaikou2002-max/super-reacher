@@ -29,7 +29,10 @@ export interface EnrichmentProvider {
     providerRecordId?: string;
     confidence: "high" | "medium" | "low" | "unknown";
   } | null>;
-  verifyContact(input: { email?: string; phone?: string }): Promise<"verified" | "invalid" | "unknown">;
+  verifyContact(input: {
+    email?: string;
+    phone?: string;
+  }): Promise<"verified" | "invalid" | "unknown">;
 }
 
 export interface MessagingProvider {

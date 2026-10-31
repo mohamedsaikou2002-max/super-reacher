@@ -59,10 +59,26 @@ export const MODEL_REGISTRY: ModelInfo[] = [
 export type AgentType = "research" | "outreach" | "coding" | "creative";
 
 export const AGENTS: { name: AgentType; label: string; summary: string }[] = [
-  { name: "research", label: "Research", summary: "Finds and enriches prospect data from a brief." },
-  { name: "outreach", label: "Outreach", summary: "Drafts compliant, opt-out friendly outreach copy." },
-  { name: "coding", label: "Coding", summary: "Writes and reviews code against a task description." },
-  { name: "creative", label: "Creative", summary: "Produces landing copy, angles and creative concepts." },
+  {
+    name: "research",
+    label: "Research",
+    summary: "Finds and enriches prospect data from a brief.",
+  },
+  {
+    name: "outreach",
+    label: "Outreach",
+    summary: "Drafts compliant, opt-out friendly outreach copy.",
+  },
+  {
+    name: "coding",
+    label: "Coding",
+    summary: "Writes and reviews code against a task description.",
+  },
+  {
+    name: "creative",
+    label: "Creative",
+    summary: "Produces landing copy, angles and creative concepts.",
+  },
 ];
 
 export const CORPUS_STAGES = ["raw", "normalized", "reviewed", "exported"] as const;
@@ -79,10 +95,18 @@ export type CostDecision = { allowed: boolean; reason: string; requires_approval
 
 export function evaluateCostPolicy(tier: ProviderTier, flags: CostFlags): CostDecision {
   if (tier === "local") {
-    return { allowed: true, reason: "local providers are always allowed", requires_approval: false };
+    return {
+      allowed: true,
+      reason: "local providers are always allowed",
+      requires_approval: false,
+    };
   }
   if (tier === "free_hosted") {
-    return { allowed: true, reason: "free-hosted tier allowed by default", requires_approval: false };
+    return {
+      allowed: true,
+      reason: "free-hosted tier allowed by default",
+      requires_approval: false,
+    };
   }
   if (tier === "paid_api") {
     if (!flags.allow_paid_apis) {
@@ -90,7 +114,9 @@ export function evaluateCostPolicy(tier: ProviderTier, flags: CostFlags): CostDe
     }
     return {
       allowed: true,
-      reason: flags.require_cost_approval ? "paid API allowed pending per-job approval" : "paid API allowed",
+      reason: flags.require_cost_approval
+        ? "paid API allowed pending per-job approval"
+        : "paid API allowed",
       requires_approval: flags.require_cost_approval,
     };
   }
@@ -100,7 +126,9 @@ export function evaluateCostPolicy(tier: ProviderTier, flags: CostFlags): CostDe
     }
     return {
       allowed: true,
-      reason: flags.require_cost_approval ? "remote GPU allowed pending per-job approval" : "remote GPU allowed",
+      reason: flags.require_cost_approval
+        ? "remote GPU allowed pending per-job approval"
+        : "remote GPU allowed",
       requires_approval: flags.require_cost_approval,
     };
   }
@@ -111,9 +139,18 @@ export const DEMO_TEMPLATES: Record<string, { name: string; headline: string }> 
   "ai-receptionist": { name: "AI Receptionist", headline: "Never miss another customer call" },
   "ai-crm": { name: "AI CRM", headline: "Turn follow-up into a system" },
   "ai-sales-agent": { name: "AI Sales Agent", headline: "A faster path from lead to conversation" },
-  "cybersecurity-dashboard": { name: "Cybersecurity Dashboard", headline: "See operational risk at a glance" },
-  "executive-dashboard": { name: "Executive Dashboard", headline: "One view of the metrics that matter" },
-  "nervous-system-dashboard": { name: "Nervous System Dashboard", headline: "Make state and recovery visible" },
+  "cybersecurity-dashboard": {
+    name: "Cybersecurity Dashboard",
+    headline: "See operational risk at a glance",
+  },
+  "executive-dashboard": {
+    name: "Executive Dashboard",
+    headline: "One view of the metrics that matter",
+  },
+  "nervous-system-dashboard": {
+    name: "Nervous System Dashboard",
+    headline: "Make state and recovery visible",
+  },
 };
 
 export function slugify(value: string): string {

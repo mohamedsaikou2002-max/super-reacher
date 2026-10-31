@@ -3,15 +3,24 @@ import { mapFrenchCompany, searchFranceCompanies } from "./insee-france";
 
 describe("France company search normalization", () => {
   it("maps public search results into raw-business rows with source evidence", () => {
-    const row = mapFrenchCompany({
-      siren: "123456789", nom_complet: "Example SAS", activite_principale: "62.01Z",
-      siege: { siret: "12345678900012", adresse: "10 RUE DE LA PAIX 75002 PARIS" },
-    }, "2026-09-25T12:00:00.000Z");
+    const row = mapFrenchCompany(
+      {
+        siren: "123456789",
+        nom_complet: "Example SAS",
+        activite_principale: "62.01Z",
+        siege: { siret: "12345678900012", adresse: "10 RUE DE LA PAIX 75002 PARIS" },
+      },
+      "2026-09-25T12:00:00.000Z",
+    );
 
     expect(row).toMatchObject({
-      business_name: "Example SAS", country_code: "FR", industry: "62.01Z",
-      address: "10 RUE DE LA PAIX 75002 PARIS", source: "api",
-      source_record_id: "123456789", fetched_at: "2026-09-25T12:00:00.000Z",
+      business_name: "Example SAS",
+      country_code: "FR",
+      industry: "62.01Z",
+      address: "10 RUE DE LA PAIX 75002 PARIS",
+      source: "api",
+      source_record_id: "123456789",
+      fetched_at: "2026-09-25T12:00:00.000Z",
     });
     expect(row?.raw_payload).toHaveProperty("siren", "123456789");
   });
@@ -21,9 +30,20 @@ describe("France company search normalization", () => {
   });
 
   it("calls the open search API without credentials and returns normalized rows", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ results: [{
-      siren: "123456789", nom_complet: "Example SAS", siege: {},
-    }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              siren: "123456789",
+              nom_complet: "Example SAS",
+              siege: {},
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
 
     const rows = await searchFranceCompanies("Example SAS", { fetcher });
     expect(fetcher).toHaveBeenCalledOnce();

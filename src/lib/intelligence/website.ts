@@ -18,4 +18,20 @@ export function isSameDomain(candidate: string, officialWebsite: string): boolea
   return new URL(left).hostname === new URL(right).hostname;
 }
 
-export const RESEARCH_PATHS = ["/", "/about", "/about-us", "/team", "/our-team", "/leadership", "/management", "/staff", "/founder", "/owners", "/contact", "/contact-us", "/locations", "/privacy", "/terms"];
+export const RESEARCH_PATHS = [
+  "/",
+  "/about",
+  "/about-us",
+  "/team",
+  "/our-team",
+  "/leadership",
+  "/management",
+  "/staff",
+  "/founder",
+  "/owners",
+  "/contact",
+  "/contact-us",
+  "/locations",
+  "/privacy",
+  "/terms",
+];

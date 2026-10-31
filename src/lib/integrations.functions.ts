@@ -3,7 +3,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const Provider = z.enum(["groq", "apollo", "hunter", "firecrawl", "gemini"]);
-const PutCredential = z.object({ provider: Provider, secret: z.string().min(8).max(1024), costAcknowledged: z.boolean() });
+const PutCredential = z.object({
+  provider: Provider,
+  secret: z.string().min(8).max(1024),
+  costAcknowledged: z.boolean(),
+});
 const RemoveCredential = z.object({ provider: Provider });
 
 /** Return only metadata. Never include stored provider secrets in responses. */

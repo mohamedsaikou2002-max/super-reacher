@@ -28,7 +28,9 @@ export function FranceSourcingPanel({ userEmail }: { userEmail: string | null })
     try {
       const result = await searchAndStoreFranceBusinesses({ data: { query } });
       setRecords(result.records as SavedRecord[]);
-      setMessage(`France company search returned ${result.found} record${result.found === 1 ? "" : "s"}; ${result.inserted} saved to raw_businesses.`);
+      setMessage(
+        `France company search returned ${result.found} record${result.found === 1 ? "" : "s"}; ${result.inserted} saved to raw_businesses.`,
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "France registry search failed.");
     } finally {
@@ -42,7 +44,9 @@ export function FranceSourcingPanel({ userEmail }: { userEmail: string | null })
     setMessage("");
     try {
       const result = await curateFranceRawBusinesses({ data: { query, limit: 25 } });
-      setMessage(`Stage 2 reviewed ${result.examined} raw records: ${result.curated} curated, ${result.rejected} rejected. ${result.examined > 0 ? "Low confidence matches remain in review." : "Search and save businesses first."}`);
+      setMessage(
+        `Stage 2 reviewed ${result.examined} raw records: ${result.curated} curated, ${result.rejected} rejected. ${result.examined > 0 ? "Low confidence matches remain in review." : "Search and save businesses first."}`,
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "France lead curation failed.");
     } finally {
@@ -54,8 +58,15 @@ export function FranceSourcingPanel({ userEmail }: { userEmail: string | null })
     <section className="mb-5 rounded-xl border border-border bg-card p-4">
       <div className="mb-3">
         <h3 className="text-sm font-bold text-foreground">Stage 1 · France business sourcing</h3>
-        <p className="mt-1 text-[11px] text-muted-foreground">Search the open French company API by business name. Results are saved as raw records and are not curated or enriched.</p>
-        {!userEmail && <p className="mt-1 text-[11px] text-muted-foreground">An authenticated workspace session is required for registry imports.</p>}
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Search the open French company API by business name. Results are saved as raw records and
+          are not curated or enriched.
+        </p>
+        {!userEmail && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            An authenticated workspace session is required for registry imports.
+          </p>
+        )}
       </div>
       <form className="flex flex-wrap gap-2" onSubmit={submit}>
         <input
@@ -74,16 +85,31 @@ export function FranceSourcingPanel({ userEmail }: { userEmail: string | null })
       </form>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <span className="text-[11px] text-muted-foreground">Stage 2 · Groq curation</span>
-        <Button type="button" size="sm" variant="secondary" onClick={curate} disabled={curating || query.trim().length < 2 || !userEmail}>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={curate}
+          disabled={curating || query.trim().length < 2 || !userEmail}
+        >
           {curating ? "Curating…" : "Curate recent France records"}
         </Button>
       </div>
-      {message && <p className="mt-3 text-xs text-muted-foreground" role="status">{message}</p>}
+      {message && (
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
+          {message}
+        </p>
+      )}
       {records.length > 0 && (
         <div className="mt-3 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-xs">
             <thead className="bg-surface text-muted-foreground">
-              <tr><th className="p-2">Business</th><th className="p-2">SIREN</th><th className="p-2">Industry</th><th className="p-2">Address</th></tr>
+              <tr>
+                <th className="p-2">Business</th>
+                <th className="p-2">SIREN</th>
+                <th className="p-2">Industry</th>
+                <th className="p-2">Address</th>
+              </tr>
             </thead>
             <tbody>
               {records.map((record) => (

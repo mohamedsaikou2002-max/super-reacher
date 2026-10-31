@@ -16,9 +16,15 @@ export const lookupProfessionalContact = createServerFn({ method: "POST" })
     const { getCredential } = await import("./integration-vault.server");
     const key = await getCredential(context.userId, data.provider);
     if (!key) throw new Error(`Connect your ${data.provider} API key in Integrations first.`);
-    const { ApolloEnrichmentProvider, HunterEnrichmentProvider } = await import("./intelligence/enrichment");
-    const provider = data.provider === "apollo"
-      ? new ApolloEnrichmentProvider(key) : new HunterEnrichmentProvider(key);
-    const result = await provider.findProfessionalContact({ fullName: data.fullName, companyName: data.companyName });
+    const { ApolloEnrichmentProvider, HunterEnrichmentProvider } =
+      await import("./intelligence/enrichment");
+    const provider =
+      data.provider === "apollo"
+        ? new ApolloEnrichmentProvider(key)
+        : new HunterEnrichmentProvider(key);
+    const result = await provider.findProfessionalContact({
+      fullName: data.fullName,
+      companyName: data.companyName,
+    });
     return { provider: data.provider, contact: result, verifiedByProvider: false };
   });

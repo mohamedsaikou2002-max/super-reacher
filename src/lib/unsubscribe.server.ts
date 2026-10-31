@@ -24,35 +24,53 @@ export function verifyUnsubscribeToken(token: string): UnsubscribeIdentity | nul
     const parsed: unknown = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     if (!parsed || typeof parsed !== "object") return null;
     const value = parsed as Partial<UnsubscribeIdentity>;
-    if (!value.userId || !value.contactId || !value.email ||
-        !/^[a-f0-9-]{36}$/i.test(value.userId) || !/^[a-f0-9-]{36}$/i.test(value.contactId) ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) return null;
+    if (
+      !value.userId ||
+      !value.contactId ||
+      !value.email ||
+      !/^[a-f0-9-]{36}$/i.test(value.userId) ||
+      !/^[a-f0-9-]{36}$/i.test(value.contactId) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)
+    )
+      return null;
     return { userId: value.userId, contactId: value.contactId, email: value.email };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function makeUnsubscribeUrl(identity: UnsubscribeIdentity): string {
   const base = new URL(process.env["PUBLIC_APP_URL"] ?? "");
-  if (base.protocol !== "https:" || base.username || base.password) throw new Error("PUBLIC_APP_URL requires a public HTTPS origin.");
+  if (base.protocol !== "https:" || base.username || base.password)
+    throw new Error("PUBLIC_APP_URL requires a public HTTPS origin.");
   const url = new URL("/api/unsubscribe", base);
   url.searchParams.set("token", createUnsubscribeToken(identity));
   return url.toString();
 }
 
 /** Resend uses Svix-signed webhook callbacks. Validate the exact raw body. */
-export function verifyResendWebhook(body: string, id: string | null, stamp: string | null, signatures: string | null): boolean {
+export function verifyResendWebhook(
+  body: string,
+  id: string | null,
+  stamp: string | null,
+  signatures: string | null,
+): boolean {
   if (!id || !stamp || !signatures || !/^\d{10}$/.test(stamp)) return false;
   if (Math.abs(Date.now() / 1000 - Number(stamp)) > 300) return false;
   const encodedSecret = process.env["RESEND_WEBHOOK_SECRET"] ?? "";
   if (!encodedSecret.startsWith("whsec_")) return false;
   const key = Buffer.from(encodedSecret.slice(6), "base64");
   if (key.length < 16) return false;
-  const expected = createHmac("sha256", key).update(id + "." + stamp + "." + body).digest();
+  const expected = createHmac("sha256", key)
+    .update(id + "." + stamp + "." + body)
+    .digest();
   return signatures.split(" ").some((part) => {
     if (!part.startsWith("v1,")) return false;
     try {
       const provided = Buffer.from(part.slice(3), "base64");
       return provided.length === expected.length && timingSafeEqual(provided, expected);
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   });
 }

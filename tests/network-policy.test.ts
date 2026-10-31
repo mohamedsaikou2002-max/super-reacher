@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseHostAllowlist, trustedEngineEndpoint, validateTrustedHttpsUrl } from "../src/lib/network-policy";
+import {
+  parseHostAllowlist,
+  trustedEngineEndpoint,
+  validateTrustedHttpsUrl,
+} from "../src/lib/network-policy";
 
 describe("remote destination policy", () => {
   const hosts = ["engine.example.com", "research.example.org"];
@@ -20,12 +24,18 @@ describe("remote destination policy", () => {
     expect(() => validateTrustedHttpsUrl(input, hosts)).toThrow();
   });
   it("rejects user-specified path when creating engine endpoints", () => {
-    expect(() => trustedEngineEndpoint("https://engine.example.com/private", "/api/health", hosts)).toThrow(/base URL/);
+    expect(() =>
+      trustedEngineEndpoint("https://engine.example.com/private", "/api/health", hosts),
+    ).toThrow(/base URL/);
   });
   it("accepts exact trusted HTTPS hosts and fixed API paths", () => {
-    expect(trustedEngineEndpoint("https://engine.example.com", "/api/health", hosts)).toBe("https://engine.example.com/api/health");
+    expect(trustedEngineEndpoint("https://engine.example.com", "/api/health", hosts)).toBe(
+      "https://engine.example.com/api/health",
+    );
   });
   it("rejects DNS suffix tricks in the allowlist", () => {
-    expect(parseHostAllowlist("localhost,127.0.0.1,engine.example.com,example.local").join(",")).toBe("engine.example.com");
+    expect(
+      parseHostAllowlist("localhost,127.0.0.1,engine.example.com,example.local").join(","),
+    ).toBe("engine.example.com");
   });
 });

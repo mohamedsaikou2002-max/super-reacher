@@ -4,10 +4,24 @@ import { createHash } from "node:crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { crawlOfficialWebsite } from "./firecrawl.server";
 
-const CrawlInput = z.object({ businessId: z.string().uuid(), maxPages: z.number().int().min(1).max(50).optional(), maxDepth: z.number().int().min(0).max(3).optional() });
-const RunInput = z.object({ runId: z.string().uuid(), maxPages: z.number().int().min(1).max(50).optional(), maxDepth: z.number().int().min(0).max(3).optional() });
+const CrawlInput = z.object({
+  businessId: z.string().uuid(),
+  maxPages: z.number().int().min(1).max(50).optional(),
+  maxDepth: z.number().int().min(0).max(3).optional(),
+});
+const RunInput = z.object({
+  runId: z.string().uuid(),
+  maxPages: z.number().int().min(1).max(50).optional(),
+  maxDepth: z.number().int().min(0).max(3).optional(),
+});
 
-async function processCrawlRun(input: { runId: string; userId: string; supabase: any; maxPages?: number; maxDepth?: number }) {
+async function processCrawlRun(input: {
+  runId: string;
+  userId: string;
+  supabase: any;
+  maxPages?: number;
+  maxDepth?: number;
+}) {
   const { data: run, error: runError } = await input.supabase
     .from("enrichment_runs")
     .select("id, business_id, status")
@@ -25,16 +39,35 @@ async function processCrawlRun(input: { runId: string; userId: string; supabase:
     .maybeSingle();
   if (businessError || !business) throw new Error("Business not found.");
   if (!business.official_website) {
-    await input.supabase.from("enrichment_runs").update({ status: "blocked", error: "Missing official website", completed_at: new Date().toISOString() }).eq("id", run.id);
+    await input.supabase
+      .from("enrichment_runs")
+      .update({
+        status: "blocked",
+        error: "Missing official website",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", run.id);
     return { runId: run.id, status: "blocked", pageCount: 0 };
   }
 
-  await input.supabase.from("enrichment_runs").update({ status: "running", attempt: 1, started_at: new Date().toISOString(), error: null }).eq("id", run.id);
+  await input.supabase
+    .from("enrichment_runs")
+    .update({ status: "running", attempt: 1, started_at: new Date().toISOString(), error: null })
+    .eq("id", run.id);
   try {
     const { getCredential } = await import("../integration-vault.server");
     let personalKey: string | null = null;
-    try { personalKey = await getCredential(input.userId, "firecrawl"); } catch { /* deployment env fallback */ }
-    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, ...(input.maxPages !== undefined ? { maxPages: input.maxPages } : {}), ...(input.maxDepth !== undefined ? { maxDepth: input.maxDepth } : {}), ...(personalKey ? { apiKey: personalKey } : {}) });
+    try {
+      personalKey = await getCredential(input.userId, "firecrawl");
+    } catch {
+      /* deployment env fallback */
+    }
+    const result = await crawlOfficialWebsite({
+      officialWebsite: business.official_website,
+      ...(input.maxPages !== undefined ? { maxPages: input.maxPages } : {}),
+      ...(input.maxDepth !== undefined ? { maxDepth: input.maxDepth } : {}),
+      ...(personalKey ? { apiKey: personalKey } : {}),
+    });
     const rows = result.pages.map((page) => ({
       business_id: business.id,
       url: page.url,
@@ -46,13 +79,29 @@ async function processCrawlRun(input: { runId: string; userId: string; supabase:
       crawl_status: page.crawl_status,
       crawled_at: new Date().toISOString(),
     }));
-    if (rows.length) await input.supabase.from("web_pages").upsert(rows, { onConflict: "business_id,canonical_url" });
-    await input.supabase.from("enrichment_runs").update({ status: "completed", completed_at: new Date().toISOString(), error: null }).eq("id", run.id);
-    await input.supabase.from("businesses").update({ website_status: "crawled", enrichment_status: "research_pending", updated_at: new Date().toISOString() }).eq("id", business.id);
+    if (rows.length)
+      await input.supabase
+        .from("web_pages")
+        .upsert(rows, { onConflict: "business_id,canonical_url" });
+    await input.supabase
+      .from("enrichment_runs")
+      .update({ status: "completed", completed_at: new Date().toISOString(), error: null })
+      .eq("id", run.id);
+    await input.supabase
+      .from("businesses")
+      .update({
+        website_status: "crawled",
+        enrichment_status: "research_pending",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", business.id);
     return { runId: run.id, status: "completed", pageCount: rows.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Firecrawl request failed.";
-    await input.supabase.from("enrichment_runs").update({ status: "failed", error: message, completed_at: new Date().toISOString() }).eq("id", run.id);
+    await input.supabase
+      .from("enrichment_runs")
+      .update({ status: "failed", error: message, completed_at: new Date().toISOString() })
+      .eq("id", run.id);
     throw new Error(message);
   }
 }
@@ -68,12 +117,22 @@ export const crawlBusinessWebsite = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error || !business) throw new Error("Business not found.");
-    if (!business.official_website) throw new Error("This business does not have an official website to crawl.");
+    if (!business.official_website)
+      throw new Error("This business does not have an official website to crawl.");
 
     const { getCredential } = await import("../integration-vault.server");
     let personalKey: string | null = null;
-    try { personalKey = await getCredential(context.userId, "firecrawl"); } catch { /* deployment env fallback */ }
-    const result = await crawlOfficialWebsite({ officialWebsite: business.official_website, ...(data.maxPages !== undefined ? { maxPages: data.maxPages } : {}), ...(data.maxDepth !== undefined ? { maxDepth: data.maxDepth } : {}), ...(personalKey ? { apiKey: personalKey } : {}) });
+    try {
+      personalKey = await getCredential(context.userId, "firecrawl");
+    } catch {
+      /* deployment env fallback */
+    }
+    const result = await crawlOfficialWebsite({
+      officialWebsite: business.official_website,
+      ...(data.maxPages !== undefined ? { maxPages: data.maxPages } : {}),
+      ...(data.maxDepth !== undefined ? { maxDepth: data.maxDepth } : {}),
+      ...(personalKey ? { apiKey: personalKey } : {}),
+    });
     const rows = result.pages.map((page) => ({
       business_id: business.id,
       url: page.url,
@@ -86,7 +145,9 @@ export const crawlBusinessWebsite = createServerFn({ method: "POST" })
       crawled_at: new Date().toISOString(),
     }));
     if (rows.length) {
-      const { error: upsertError } = await (context.supabase as any).from("web_pages").upsert(rows, { onConflict: "business_id,canonical_url" });
+      const { error: upsertError } = await (context.supabase as any)
+        .from("web_pages")
+        .upsert(rows, { onConflict: "business_id,canonical_url" });
       if (upsertError) throw new Error(upsertError.message);
     }
     return { crawlId: result.crawlId ?? null, pageCount: rows.length };
@@ -115,7 +176,12 @@ export const queueAllBusinessWebsiteCrawls = createServerFn({ method: "POST" })
         .in("status", ["queued", "running"])
         .maybeSingle();
       if (activeRun) continue;
-      const { error: insertError } = await supabase.from("enrichment_runs").insert({ user_id: context.userId, business_id: business.id, type: "crawl_website", status: "queued" });
+      const { error: insertError } = await supabase.from("enrichment_runs").insert({
+        user_id: context.userId,
+        business_id: business.id,
+        type: "crawl_website",
+        status: "queued",
+      });
       if (!insertError) queued += 1;
     }
     return { discovered: businesses?.length ?? 0, queued };
@@ -124,4 +190,12 @@ export const queueAllBusinessWebsiteCrawls = createServerFn({ method: "POST" })
 export const runBusinessWebsiteCrawl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RunInput.parse(input))
-  .handler(async ({ data, context }) => processCrawlRun({ runId: data.runId, userId: context.userId, supabase: context.supabase as any, ...(data.maxPages !== undefined ? { maxPages: data.maxPages } : {}), ...(data.maxDepth !== undefined ? { maxDepth: data.maxDepth } : {}) }));
+  .handler(async ({ data, context }) =>
+    processCrawlRun({
+      runId: data.runId,
+      userId: context.userId,
+      supabase: context.supabase as any,
+      ...(data.maxPages !== undefined ? { maxPages: data.maxPages } : {}),
+      ...(data.maxDepth !== undefined ? { maxDepth: data.maxDepth } : {}),
+    }),
+  );
