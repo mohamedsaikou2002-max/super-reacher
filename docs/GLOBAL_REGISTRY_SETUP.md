@@ -4,7 +4,7 @@
 - **France (FR):** live API Recherche d'entreprises name search (bounded request, no API key), in the Global Outreach Studio.
 - **United Kingdom (GB):** Companies House advanced search with server-only `COMPANIES_HOUSE_API_KEY`; name and optional five-digit SIC filter; bounded pagination.
 - **Singapore, Italy, Germany, Canada, US states** (also France/UK bulk): **authorized bulk-file import** adapters, CSV/CSV.GZ/ZIP. Source files are not included or fetched without permission. Import is dry-run by default. This is NOT a claim that all national business data is preloaded.
-- **Groq:** multi-country registry niche classification in bounded batches; `GROQ_API_KEY` required. It never invents emails, phone numbers or roles.
+- **Groq/Gemini research:** authenticated `researchRegisteredBusiness` server function uses up to eight already-crawled `web_pages` entries, stores source-grounded structured JSON in `research_results`, and rejects unverified people/contacts; configure `GROQ_API_KEY` or `GEMINI_API_KEY`. This is available to server integrations, not yet exposed as a bulk job worker.\n- **Groq:** multi-country registry niche classification in bounded batches; `GROQ_API_KEY` required. It never invents emails, phone numbers or roles.
 - **Scrapy:** optional robots-aware crawler for verified official HTTPS company websites; run explicitly, not enabled as a public crawling proxy.
 - **Apollo:** existing contact lookup provider can be configured separately with `APOLLO_API_KEY`. Registry entries have no assumed executive contacts.
 
