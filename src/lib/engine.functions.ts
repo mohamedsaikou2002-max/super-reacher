@@ -69,7 +69,11 @@ async function callSelfHostedEngine(
   system: string,
   prompt: string,
 ): Promise<{ text: string; provider: string; model: string; cost: number }> {
-  const endpoint = trustedEngineEndpoint(settings.engine_base_url, "/api/ai/complete", parseHostAllowlist(process.env["SELF_HOSTED_ENGINE_ALLOWED_HOSTS"]));
+  const endpoint = trustedEngineEndpoint(
+    settings.engine_base_url,
+    "/api/ai/complete",
+    parseHostAllowlist(process.env["SELF_HOSTED_ENGINE_ALLOWED_HOSTS"]),
+  );
   const res = await fetch(endpoint, {
     method: "POST",
     redirect: "error",
@@ -155,15 +159,25 @@ export const checkEngineHealth = createServerFn({ method: "POST" })
     const settings = await loadSettings(context.supabase as never, context.userId);
     const { getCredential } = await import("./integration-vault.server");
     let personalGroq = false;
-    try { personalGroq = Boolean(await getCredential(context.userId, "groq")); } catch { /* Vault not configured; show unavailable */ }
+    try {
+      personalGroq = Boolean(await getCredential(context.userId, "groq"));
+    } catch {
+      /* Vault not configured; show unavailable */
+    }
     const providers: Record<
       string,
       { healthy: boolean; is_local: boolean; is_free: boolean; tier: ProviderTier; detail: string }
     > = {
       groq: {
         healthy: personalGroq || Boolean(process.env["GROQ_API_KEY"]),
-        is_local: false, is_free: false, tier: "paid_api",
-        detail: personalGroq ? "BYO key saved (not live-tested)" : (process.env["GROQ_API_KEY"] ? "server key configured" : "Connect your Groq key"),
+        is_local: false,
+        is_free: false,
+        tier: "paid_api",
+        detail: personalGroq
+          ? "BYO key saved (not live-tested)"
+          : process.env["GROQ_API_KEY"]
+            ? "server key configured"
+            : "Connect your Groq key",
       },
       lovable: {
         healthy: Boolean(process.env["LOVABLE_API_KEY"]),
@@ -178,7 +192,11 @@ export const checkEngineHealth = createServerFn({ method: "POST" })
       let healthy = false;
       let detail = "unreachable";
       try {
-        const endpoint = trustedEngineEndpoint(settings.engine_base_url, "/api/health", parseHostAllowlist(process.env["SELF_HOSTED_ENGINE_ALLOWED_HOSTS"]));
+        const endpoint = trustedEngineEndpoint(
+          settings.engine_base_url,
+          "/api/health",
+          parseHostAllowlist(process.env["SELF_HOSTED_ENGINE_ALLOWED_HOSTS"]),
+        );
         const res = await fetch(endpoint, {
           headers: settings.engine_api_key ? { "x-api-key": settings.engine_api_key } : {},
           redirect: "error",
@@ -198,7 +216,10 @@ export const checkEngineHealth = createServerFn({ method: "POST" })
       };
     }
 
-    return { providers, settings: { ...settings, engine_api_key: settings.engine_api_key ? "set" : "" } };
+    return {
+      providers,
+      settings: { ...settings, engine_api_key: settings.engine_api_key ? "set" : "" },
+    };
   });
 
 /* ------------------------------------------------------------------ jobs */
@@ -217,7 +238,8 @@ export const runAgentJob = createServerFn({ method: "POST" })
       .eq("id", data.jobId)
       .maybeSingle();
     if (error || !job) throw new Error("Job not found");
-    if (!["pending", "awaiting_approval"].includes(job.status)) throw new Error("Job is not runnable.");
+    if (!["pending", "awaiting_approval"].includes(job.status))
+      throw new Error("Job is not runnable.");
 
     const settings = await loadSettings(supabase as never, userId);
     const payload = (job.payload ?? {}) as { prompt?: string; model?: string };
@@ -232,8 +254,11 @@ export const runAgentJob = createServerFn({ method: "POST" })
       const { getCredential, isCostAcknowledged } = await import("./integration-vault.server");
       try {
         personalGroqKey = await getCredential(userId, "groq");
-        personalGroqAuthorized = Boolean(personalGroqKey) && await isCostAcknowledged(userId, "groq");
-      } catch { /* Fall back to existing deployment policy if personal vault is unavailable */ }
+        personalGroqAuthorized =
+          Boolean(personalGroqKey) && (await isCostAcknowledged(userId, "groq"));
+      } catch {
+        /* Fall back to existing deployment policy if personal vault is unavailable */
+      }
     }
     const decision = evaluateCostPolicy(tierForModel(model), settings);
     if ((!decision.allowed || decision.requires_approval) && !personalGroqAuthorized) {

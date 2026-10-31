@@ -28,15 +28,22 @@ jobs:
           cache: npm
       - name: Refresh stale npm lockfile without install scripts
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Commit generated lockfile when necessary
+      - name: Install and normalize formatting on internal review branch
+        run: |
+          npm ci --no-audit --no-fund
+          npx prettier --write .
+          npx eslint . --fix
+      - name: Commit generated lockfile and normalized code when necessary
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
         run: |
-          if ! git diff --quiet -- package-lock.json; then
+          # GitHub Actions token cannot push modifications to workflow YAML.
+          git restore -- .github/workflows
+          if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: synchronize npm lockfile"
+            git add -u
+            git commit -m "style: synchronize lockfile and normalize formatting"
             git push origin "HEAD:${HEAD_BRANCH}"
           fi
 

@@ -38,10 +38,16 @@ function getFirecrawlKey(personalKey?: string): string {
 }
 
 function firecrawlHeaders(personalKey?: string): HeadersInit {
-  return { Authorization: `Bearer ${getFirecrawlKey(personalKey)}`, "Content-Type": "application/json" };
+  return {
+    Authorization: `Bearer ${getFirecrawlKey(personalKey)}`,
+    "Content-Type": "application/json",
+  };
 }
 
-function pageFromDocument(document: FirecrawlDocument, officialWebsite: string): CrawledPage | null {
+function pageFromDocument(
+  document: FirecrawlDocument,
+  officialWebsite: string,
+): CrawledPage | null {
   const source = document.metadata?.sourceURL ?? document.metadata?.url;
   const canonical = source ? normalizeUrl(source) : null;
   if (!canonical || !isSameDomain(canonical, officialWebsite)) return null;
@@ -80,14 +86,20 @@ export async function crawlOfficialWebsite(input: {
     const crawlId = body.id;
     for (let attempt = 0; attempt < 30; attempt += 1) {
       await sleep(1000);
-      const statusResponse = await fetch(`https://api.firecrawl.dev/v2/crawl/${encodeURIComponent(crawlId)}`, { headers: firecrawlHeaders(input.apiKey) });
-      if (!statusResponse.ok) throw new Error(`Firecrawl crawl status failed with HTTP ${statusResponse.status}.`);
+      const statusResponse = await fetch(
+        `https://api.firecrawl.dev/v2/crawl/${encodeURIComponent(crawlId)}`,
+        { headers: firecrawlHeaders(input.apiKey) },
+      );
+      if (!statusResponse.ok)
+        throw new Error(`Firecrawl crawl status failed with HTTP ${statusResponse.status}.`);
       body = (await statusResponse.json()) as FirecrawlCrawlResponse;
-      if (body.status === "completed" || body.status === "failed" || body.status === "cancelled") break;
+      if (body.status === "completed" || body.status === "failed" || body.status === "cancelled")
+        break;
     }
   }
   if (body.success === false) throw new Error("Firecrawl rejected the crawl request.");
-  if (body.status === "failed" || body.status === "cancelled") throw new Error(`Firecrawl crawl ${body.status}.`);
+  if (body.status === "failed" || body.status === "cancelled")
+    throw new Error(`Firecrawl crawl ${body.status}.`);
 
   const pages = (body.data ?? [])
     .map((document) => pageFromDocument(document, officialWebsite))

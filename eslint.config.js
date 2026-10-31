@@ -34,6 +34,9 @@ export default tseslint.config(
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Historical dynamic API integrations are being hardened incrementally.
+      // Preserve the diagnostic until they can all be explicitly typed.
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   eslintPluginPrettier,

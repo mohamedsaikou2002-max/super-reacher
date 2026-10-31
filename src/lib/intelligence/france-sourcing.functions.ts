@@ -16,10 +16,14 @@ export const searchAndStoreFranceBusinesses = createServerFn({ method: "POST" })
     const { data: saved, error } = await (context.supabase as any)
       .from("raw_businesses")
       .upsert(rows, { onConflict: "user_id,country_code,source,source_record_id" })
-      .select("id,business_name,country_code,industry,address,source,raw_source_url,source_record_id,fetched_at");
+      .select(
+        "id,business_name,country_code,industry,address,source,raw_source_url,source_record_id,fetched_at",
+      );
     if (error) {
       if (error.code === "42P01" || error.code === "PGRST205") {
-        throw new Error("The raw_businesses table is not installed yet. Apply the latest Supabase migration.");
+        throw new Error(
+          "The raw_businesses table is not installed yet. Apply the latest Supabase migration.",
+        );
       }
       throw new Error(`Could not save France registry results: ${error.message}`);
     }
