@@ -67,10 +67,11 @@ export const curateFranceRawBusinesses = createServerFn({ method: "POST" })
     for (const raw of records) {
       const decision = byId.get(String(raw["source_record_id"]));
       if (!decision) continue;
-      let { data: business, error: businessLookupError } = await supabase.from("businesses")
+      const { data: foundBusiness, error: businessLookupError } = await supabase.from("businesses")
         .select("id").eq("user_id", context.userId).eq("country_code", "FR")
         .eq("registration_id", raw["source_record_id"]).maybeSingle();
       if (businessLookupError) throw new Error(businessLookupError.message);
+      let business = foundBusiness;
       if (!business) {
         const inserted = await supabase.from("businesses").insert({
           user_id: context.userId, business_name: raw["business_name"], country_code: "FR",
