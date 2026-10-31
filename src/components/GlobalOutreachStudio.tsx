@@ -3,6 +3,7 @@ import { ClipboardCopy, Globe2, Save, ShieldCheck, Sparkles } from "lucide-react
 import { Button } from "@/components/Button";
 import { supabase } from "@/integrations/supabase/client";
 import { ApprovedEmailSender } from "./ApprovedEmailSender";
+import { GlobalRegistryPanel } from "./GlobalRegistryPanel";
 import { markets } from "@/lib/email-templates";
 import { lookupProfessionalContact } from "@/lib/prospect-lookup.functions";
 import {
@@ -93,6 +94,8 @@ export function GlobalOutreachStudio({ userEmail }: { userEmail: string | null }
           <ShieldCheck size={14}/> Draft and review only · No automatic sending
         </div>
       </div>
+
+      <GlobalRegistryPanel userEmail={userEmail} />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <section className="rounded-xl border border-border bg-card p-5 space-y-4">
