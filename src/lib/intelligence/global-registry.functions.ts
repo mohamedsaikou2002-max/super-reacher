@@ -7,7 +7,7 @@ import { REGISTRY_ACCESS } from "./registry-datasets";
 
 const LiveInput = z.object({
   country: z.enum(["FR", "GB"]),
-  query: z.string().trim().min(2).max(120),
+  query: z.string().trim().min(1).max(120),
   industryCode: z
     .string()
     .regex(/^\d{5}$/)

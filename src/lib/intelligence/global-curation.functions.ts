@@ -8,6 +8,7 @@ const Input = z.object({
   country: z.enum(REGISTRY_COUNTRIES),
   niche: z.string().trim().min(2).max(250),
   limit: z.number().int().min(1).max(25).optional(),
+  offset: z.number().int().min(0).max(1000000).optional(),
 });
 export const curateGlobalRawBusinesses = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

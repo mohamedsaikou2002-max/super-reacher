@@ -35,7 +35,7 @@ export async function searchLiveRegistry(
       `${country}: ${REGISTRY_ACCESS[country as RegistryCountry]?.note ?? "No live adapter configured. Import a licensed dataset."}`,
     );
   const query = input.query.trim();
-  if (query.length < 2 || query.length > 120) throw new Error("Query must be 2–120 characters.");
+  if ((! (country === "GB" && query === "*" && input.industryCode) && query.length < 2) || query.length > 120) throw new Error("Query must be 2–120 characters.");
   const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
   if (country === "FR") {
     const rows = await searchFranceCompanies(query, { fetcher, limit: Math.min(limit, 25) });

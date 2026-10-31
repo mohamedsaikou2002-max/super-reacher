@@ -20,6 +20,7 @@ export function GlobalRegistryPanel({ userEmail }: { userEmail: string | null })
   const [industryCode, setIndustryCode] = useState("");
   const [results, setResults] = useState<DisplayRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [curationOffset, setCurationOffset] = useState(0);
   const [message, setMessage] = useState("");
   const source = REGISTRY_ACCESS[country];
   async function search(event: FormEvent<HTMLFormElement>) {
@@ -94,7 +95,7 @@ export function GlobalRegistryPanel({ userEmail }: { userEmail: string | null })
             onChange={(e) => setQuery(e.target.value)}
             minLength={2}
             maxLength={120}
-            placeholder="Aerospace manufacturers"
+            placeholder="Company name (or * with UK SIC)"
           />
         </label>
         {country === "GB" && (
@@ -112,7 +113,7 @@ export function GlobalRegistryPanel({ userEmail }: { userEmail: string | null })
         <Button
           type="submit"
           size="sm"
-          disabled={!userEmail || loading || query.trim().length < 2 || source.mode !== "live_api"}
+          disabled={!userEmail || loading || !(query.trim().length >= 2 || (country === "GB" && query.trim() === "*" && /^[0-9]{5}$/.test(industryCode))) || source.mode !== "live_api"}
         >
           Search registry
         </Button>
