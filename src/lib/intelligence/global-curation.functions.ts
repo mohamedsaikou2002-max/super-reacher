@@ -23,7 +23,7 @@ export const curateGlobalRawBusinesses = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("country_code", data.country)
       .order("fetched_at", { ascending: false })
-      .limit(data.limit ?? 20);
+      .range(data.offset ?? 0, (data.offset ?? 0) + (data.limit ?? 20) - 1);
     if (error) throw new Error(error.message);
     if (!rows?.length) return { examined: 0, curated: 0, review: 0, rejected: 0 };
     const decisions = await curateRegistryBatch(
