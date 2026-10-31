@@ -57,7 +57,7 @@ def map_row(country, data, source_url, jurisdiction="", date=None):
         "raw_payload": {"registry_id": identifier, "registry_name": name,
                         "industry": first(row, industries), "jurisdiction": jurisdiction or None,
                         "source_type": "authorized_csv_import", "registry_status": first(row, ("status", "company_status", "entity_status_description"))},
-        "fetched_at": date,
+        **({"fetched_at": date} if date else {}),
     }
 
 @contextmanager

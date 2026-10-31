@@ -55,7 +55,9 @@ export function mapRegistryRow(
   if (country === "US" && !/^[A-Z]{2}$/.test(provenance.jurisdiction ?? "")) {
     throw new Error("US registry imports require a two-letter state jurisdiction.");
   }
-  const sourceRecordId = country === "US" ? `${provenance.jurisdiction}:${id}` : id;
+  const court = country === "DE" ? stringField(row, ["registergericht", "register_court"]) : "";
+  const scopedId = court && !id.startsWith(court) ? `${court}:${id}` : id;
+  const sourceRecordId = country === "US" ? `${provenance.jurisdiction}:${id}` : scopedId;
   return {
     business_name: name.slice(0, 500), country_code: country,
     industry: stringField(row, fields.industry).slice(0, 500),
