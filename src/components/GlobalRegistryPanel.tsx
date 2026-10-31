@@ -51,8 +51,9 @@ export function GlobalRegistryPanel({ userEmail }: { userEmail: string | null })
     setMessage("");
     try {
       const result = await curateGlobalRawBusinesses({
-        data: { country, niche: query, limit: 20 },
+        data: { country, niche: query, limit: 20, offset: curationOffset },
       });
+      setCurationOffset((offset) => offset + 20);
       setMessage(
         `Groq assessed ${result.examined}: ${result.curated} curated, ${result.review} require review, ${result.rejected} rejected. No outreach enabled automatically.`,
       );
@@ -78,6 +79,7 @@ export function GlobalRegistryPanel({ userEmail }: { userEmail: string | null })
               setCountry(e.target.value as RegistryCountry);
               setResults([]);
               setMessage("");
+              setCurationOffset(0);
             }}
           >
             {REGISTRY_COUNTRIES.map((code) => (

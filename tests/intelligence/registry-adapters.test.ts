@@ -80,6 +80,9 @@ describe("Companies House integration with mocked HTTP", () => {
       request,
     );
     expect(rows[0]?.registration_id).toBe("00012345");
+    const bySic = await searchLiveRegistry({ country_code: "GB", query: "*", industryCode: "62012" }, request);
+    expect(bySic).toHaveLength(1);
+
     const url = new URL(String(request.mock.calls[0]?.[0]));
     expect(url.searchParams.get("sic_codes")).toBe("62012");
     expect(request.mock.calls[0]?.[1].headers.Authorization).toMatch(/^Basic /);
