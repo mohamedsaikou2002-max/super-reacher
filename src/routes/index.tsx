@@ -40,7 +40,7 @@ import { Button } from "@/components/Button";
 import { createEmail, markets } from "@/lib/email-templates";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { queueAllBusinessWebsiteCrawls } from "@/lib/intelligence/firecrawl.functions";
+import { queueScrapyWebsiteCrawls } from "@/lib/intelligence/scrapy-queue.functions";
 import { REGISTRY_COUNTRY_SUMMARY, REGISTRY_SOURCE_CATALOG } from "@/lib/intelligence/registry";
 import { createAgentJob, runAgentJob, checkEngineHealth } from "@/lib/engine.functions";
 import { GlobalOutreachStudio } from "@/components/GlobalOutreachStudio";
@@ -551,8 +551,8 @@ function CrawlButton() {
     setBusy(true);
     setMsg("");
     try {
-      const r = await queueAllBusinessWebsiteCrawls();
-      setMsg(`${r.queued} crawl${r.queued !== 1 ? "s" : ""} queued`);
+      const r = await queueScrapyWebsiteCrawls();
+      setMsg(`${r.queued} Scrapy job${r.queued !== 1 ? "s" : ""} queued; a running Scrapy worker is required`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Error");
     } finally {
@@ -565,7 +565,7 @@ function CrawlButton() {
     <div className="flex items-center gap-2">
       <Button variant="secondary" size="sm" onClick={handle} disabled={busy}>
         <Globe2 size={13} />
-        {busy ? "Queueing…" : "Crawl"}
+        {busy ? "Queueing…" : "Queue Scrapy crawl"}
       </Button>
       {msg && <span className="text-[10px] text-muted-foreground">{msg}</span>}
     </div>
