@@ -37,6 +37,7 @@ COMPANIES_HOUSE_API_KEY=your_uk_key
 OUTBOUND_PROVIDER=brevo
 BREVO_API_KEY=your_brevo_key
 BREVO_FROM_ADDRESS=verified-sender@yourdomain.com
+BREVO_WEBHOOK_TOKEN=your-long-random-bearer-token
 OUTBOUND_ENABLED=false
 OUTBOUND_APPROVED_USERS=your_supabase_auth_user_uuid
 UNSUBSCRIBE_SIGNING_SECRET=secure_server_secret
@@ -45,7 +46,7 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=server-only-key
 ```
 
-Do not set `OUTBOUND_ENABLED=true` until sender verification, message approval, unsubscribe endpoint, email authentication (SPF/DKIM/DMARC), suppression workflow, domain reputation, and the relevant regional marketing rules have been verified. Free Brevo sends are limited to **300/day**; this code retains the tighter DB reservation quota of 25 approved sends per rolling day. The Brevo transactional endpoint is for communications that the provider permits; use its appropriate campaign product and permission model for marketing. There are **no bulk auto-sends** in this branch.
+Do not set `OUTBOUND_ENABLED=true` until sender verification, message approval, unsubscribe endpoint, email authentication (SPF/DKIM/DMARC), suppression workflow, domain reputation, and the relevant regional marketing rules have been verified. Free Brevo sends are limited to **300/day**; this code retains the tighter DB reservation quota of 25 approved sends per rolling day. The Brevo transactional endpoint is for communications that the provider permits; use its appropriate campaign product and permission model for marketing. There are **no bulk auto-sends** in this branch. Create a secure Brevo **transactional** webhook for `https://YOUR_APP_DOMAIN/api/brevo-webhook` with bearer authentication matching `BREVO_WEBHOOK_TOKEN`. Subscribe to delivered, hardBounce, spam and unsubscribed; the handler records delivery outcomes, logs events, and suppresses bounced/unsubscribed addresses. Provider webhook delivery must be tested against real Brevo payloads.
 
 ## Start Scrapy worker (private trusted host)
 
