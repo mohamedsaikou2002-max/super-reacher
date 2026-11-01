@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/brevo-webhook")({
         } catch { return new Response("Malformed event", { status: 400 }); }
         const events = Array.isArray(body) ? body.slice(0, 50) : [body];
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const db = supabaseAdmin;
+        const db = supabaseAdmin as any;
         for (const item of events) {
           const eventName = item?.event;
           const providerId = item?.["message-id"]?.trim();
