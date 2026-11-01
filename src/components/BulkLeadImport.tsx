@@ -65,7 +65,7 @@ export function normalizeLeadCSV(text: string): Omit<ImportedLead, "id" | "creat
   const rows = parseCSV(text.replace(/^\uFEFF/, ""));
   if (rows.length < 2) throw new Error("Paste CSV with a header and at least one record.");
   if (rows.length - 1 > MAX_ROWS) throw new Error("Import a maximum of 1,000 leads per batch.");
-  const headers = rows[0].map((c) =>
+  const headers = rows[0]!.map((c) =>
     c
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
