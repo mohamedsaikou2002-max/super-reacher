@@ -40,10 +40,12 @@ import { Button } from "@/components/Button";
 import { createEmail, markets } from "@/lib/email-templates";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { queueAllBusinessWebsiteCrawls } from "@/lib/intelligence/firecrawl.functions";
+import { queueScrapyWebsiteCrawls } from "@/lib/intelligence/scrapy-queue.functions";
 import { REGISTRY_COUNTRY_SUMMARY, REGISTRY_SOURCE_CATALOG } from "@/lib/intelligence/registry";
 import { createAgentJob, runAgentJob, checkEngineHealth } from "@/lib/engine.functions";
 import { GlobalOutreachStudio } from "@/components/GlobalOutreachStudio";
+import { BulkLeadImport } from "@/components/BulkLeadImport";
+import { SourceResearchChat } from "@/components/SourceResearchChat";
 import { BringYourOwnApi } from "@/components/BringYourOwnApi";
 
 export const Route = createFileRoute("/")({
@@ -126,15 +128,9 @@ const NAV: { id: View; label: string; icon: typeof LayoutDashboard; group?: stri
   { id: "businesses", label: "Businesses", icon: Building2 },
   { id: "contacts", label: "Contacts", icon: MessageSquare },
   { id: "research", label: "Research", icon: Brain },
-  { id: "outreach", label: "Global Outreach", icon: Globe2 },
-  { id: "email_studio", label: "HTML Email Studio", icon: Mail },
+  { id: "outreach", label: "Outreach", icon: Globe2 },
   { id: "inbox", label: "Inbox", icon: Inbox },
   { id: "agents", label: "Agents", icon: Terminal },
-  { id: "sources", label: "Sources", icon: Database },
-  { id: "integrations", label: "Integrations", icon: Zap },
-  { id: "security", label: "Security", icon: Shield },
-  { id: "logs", label: "System Logs", icon: Activity },
-  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 /* ─────────────────────── Root App ────────────────────── */
@@ -351,7 +347,12 @@ function App() {
             {view === "businesses" && <ViewBusinesses businesses={businesses} />}
             {view === "contacts" && <ViewContacts userEmail={userEmail} />}
             {view === "research" && <ViewResearch userEmail={userEmail} />}
-            {view === "outreach" && <GlobalOutreachStudio userEmail={userEmail} />}
+            {view === "outreach" && (
+              <div className="space-y-5">
+                <GlobalOutreachStudio userEmail={userEmail} />
+                <ViewOutreach userEmail={userEmail} />
+              </div>
+            )}
             {view === "email_studio" && <ViewOutreach userEmail={userEmail} />}
             {view === "inbox" && <ViewInbox />}
             {view === "agents" && (
@@ -550,8 +551,10 @@ function CrawlButton() {
     setBusy(true);
     setMsg("");
     try {
-      const r = await queueAllBusinessWebsiteCrawls();
-      setMsg(`${r.queued} crawl${r.queued !== 1 ? "s" : ""} queued`);
+      const r = await queueScrapyWebsiteCrawls();
+      setMsg(
+        `${r.queued} Scrapy job${r.queued !== 1 ? "s" : ""} queued; a running Scrapy worker is required`,
+      );
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Error");
     } finally {
@@ -564,7 +567,7 @@ function CrawlButton() {
     <div className="flex items-center gap-2">
       <Button variant="secondary" size="sm" onClick={handle} disabled={busy}>
         <Globe2 size={13} />
-        {busy ? "Queueing…" : "Crawl"}
+        {busy ? "Queueing…" : "Queue Scrapy crawl"}
       </Button>
       {msg && <span className="text-[10px] text-muted-foreground">{msg}</span>}
     </div>
@@ -916,6 +919,7 @@ function ViewLeads({
           </button>
         </div>
       )}
+      <BulkLeadImport userEmail={userEmail} onImported={(rows) => setLeads([...rows, ...leads])} />
       <DataTable<Lead>
         keyField="id"
         rows={leads}
@@ -1177,6 +1181,9 @@ function ViewResearch({ userEmail }: { userEmail: string | null }) {
   return (
     <div>
       <SectionHeader title="Research Evidence" sub={`${evidence.length} evidence records`} />
+      <div className="mb-5">
+        <SourceResearchChat userEmail={userEmail} />
+      </div>
       <DataTable
         keyField="id"
         rows={evidence}
