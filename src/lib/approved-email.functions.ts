@@ -21,8 +21,9 @@ export const sendApprovedEmail = createServerFn({ method: "POST" })
     if (process.env["OUTBOUND_ENABLED"] !== "true" || !approvedUsers.includes(context.userId)) {
       throw new Error("Outbound email is disabled for this account.");
     }
-    const apiKey = process.env["RESEND_API_KEY"];
-    const from = process.env["RESEND_FROM_ADDRESS"];
+    const provider = process.env["OUTBOUND_PROVIDER"] === "brevo" ? "brevo" : "resend";
+    const apiKey = provider === "brevo" ? process.env["BREVO_API_KEY"] : process.env["RESEND_API_KEY"];
+    const from = provider === "brevo" ? process.env["BREVO_FROM_ADDRESS"] : process.env["RESEND_FROM_ADDRESS"];
     if (!apiKey || !from || !isValidEmail(from))
       throw new Error("Email provider or verified sender is not configured.");
     if (/<script\b|<iframe\b|on[a-z]+\s*=|javascript:/i.test(data.html)) {
@@ -73,26 +74,43 @@ export const sendApprovedEmail = createServerFn({ method: "POST" })
       '">unsubscribe here</a>.</p>';
     let response: Response;
     try {
-      response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        redirect: "error",
-        signal: AbortSignal.timeout(15_000),
-        headers: {
-          Authorization: "Bearer " + apiKey,
-          "Content-Type": "application/json",
-          "Idempotency-Key": data.requestId,
+      const isBrevo = provider === "brevo";
+      response = await fetch(
+        isBrevo ? "https://api.brevo.com/v3/smtp/email" : "https://api.resend.com/emails",
+        {
+          method: "POST",
+          redirect: "error",
+          signal: AbortSignal.timeout(15_000),
+          headers: isBrevo
+            ? { "api-key": apiKey, "Content-Type": "application/json" }
+            : {
+                Authorization: "Bearer " + apiKey,
+                "Content-Type": "application/json",
+                "Idempotency-Key": data.requestId,
+              },
+          body: JSON.stringify(
+            isBrevo
+              ? {
+                  sender: { email: from },
+                  to: [{ email }],
+                  subject: data.subject,
+                  htmlContent: html,
+                  tags: ["hyperreacher-approved"],
+                  headers: { "List-Unsubscribe": "<" + unsubscribeUrl + ">" },
+                }
+              : {
+                  from,
+                  to: [email],
+                  subject: data.subject,
+                  html,
+                  headers: {
+                    "List-Unsubscribe": "<" + unsubscribeUrl + ">",
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                  },
+                },
+          ),
         },
-        body: JSON.stringify({
-          from,
-          to: [email],
-          subject: data.subject,
-          html,
-          headers: {
-            "List-Unsubscribe": "<" + unsubscribeUrl + ">",
-            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-          },
-        }),
-      });
+      );
     } catch {
       await admin
         .from("email_dispatches")
@@ -122,8 +140,9 @@ export const sendApprovedEmail = createServerFn({ method: "POST" })
           : "Email provider rejected the message (HTTP " + response.status + ").",
       );
     }
-    const payload = (await response.json()) as { id?: string };
-    if (!payload.id) {
+    const payload = (await response.json()) as { id?: string; messageId?: string };
+    const providerMessageId = provider === "brevo" ? payload.messageId : payload.id;
+    if (!providerMessageId) {
       await admin
         .from("email_dispatches")
         .update({
@@ -138,7 +157,7 @@ export const sendApprovedEmail = createServerFn({ method: "POST" })
       .from("email_dispatches")
       .update({
         status: "submitted",
-        provider_message_id: payload.id,
+        provider_message_id: providerMessageId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.requestId);
@@ -148,8 +167,8 @@ export const sendApprovedEmail = createServerFn({ method: "POST" })
       contact_id: contact.id,
       channel: "email",
       event_type: "submitted",
-      provider: "resend",
-      metadata: { request_id: data.requestId, provider_message_id: payload.id },
+      provider,
+      metadata: { request_id: data.requestId, provider_message_id: providerMessageId },
     });
     return { status: "submitted" as const, requestId: data.requestId };
   });
