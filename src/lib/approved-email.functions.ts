@@ -22,8 +22,10 @@ export const sendApprovedEmail = createServerFn({ method: "POST" })
       throw new Error("Outbound email is disabled for this account.");
     }
     const provider = process.env["OUTBOUND_PROVIDER"] === "brevo" ? "brevo" : "resend";
-    const apiKey = provider === "brevo" ? process.env["BREVO_API_KEY"] : process.env["RESEND_API_KEY"];
-    const from = provider === "brevo" ? process.env["BREVO_FROM_ADDRESS"] : process.env["RESEND_FROM_ADDRESS"];
+    const apiKey =
+      provider === "brevo" ? process.env["BREVO_API_KEY"] : process.env["RESEND_API_KEY"];
+    const from =
+      provider === "brevo" ? process.env["BREVO_FROM_ADDRESS"] : process.env["RESEND_FROM_ADDRESS"];
     if (!apiKey || !from || !isValidEmail(from))
       throw new Error("Email provider or verified sender is not configured.");
     if (/<script\b|<iframe\b|on[a-z]+\s*=|javascript:/i.test(data.html)) {

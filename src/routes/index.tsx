@@ -552,7 +552,9 @@ function CrawlButton() {
     setMsg("");
     try {
       const r = await queueScrapyWebsiteCrawls();
-      setMsg(`${r.queued} Scrapy job${r.queued !== 1 ? "s" : ""} queued; a running Scrapy worker is required`);
+      setMsg(
+        `${r.queued} Scrapy job${r.queued !== 1 ? "s" : ""} queued; a running Scrapy worker is required`,
+      );
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Error");
     } finally {
@@ -1179,7 +1181,9 @@ function ViewResearch({ userEmail }: { userEmail: string | null }) {
   return (
     <div>
       <SectionHeader title="Research Evidence" sub={`${evidence.length} evidence records`} />
-      <div className="mb-5"><SourceResearchChat userEmail={userEmail} /></div>
+      <div className="mb-5">
+        <SourceResearchChat userEmail={userEmail} />
+      </div>
       <DataTable
         keyField="id"
         rows={evidence}

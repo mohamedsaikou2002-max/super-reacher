@@ -63,15 +63,15 @@ The Scrapy spider obeys robots.txt and caps pages; a network egress firewall mus
 
 ## Registry truth table
 
-| Registry | Current connector | What still needs work |
-| --- | --- | --- |
-| France API Recherche d'entreprises (SIRENE-derived) | Authenticated app search is coded, keyless | Deployment-network smoke test, retry policy and source suitability review |
-| INSEE direct SIRENE V3.11 | Separate INSEE subscription/key not yet integrated | Official API adapter and key, protection for non-diffusible persons |
-| UK Companies House | Authenticated app adapter present | Add key, real remote test and production quota verification |
-| Germany Unternehmensregister / Handelsregister | Registry catalog and authorized dataset importer only | Source-specific permitted API/feed/license and validation; not safe to claim live |
-| Italy Registro Imprese | Registry catalog and importer only | Approved commercial data access and field mappings |
-| 50 US state registries | Catalog and state-scoped CSV importer | State-by-state API/bulk source licenses and fixtures; no nationwide public API |
-| Singapore, Canada | Importer/catalog | Approved official exports and source-specific integration |
+| Registry                                            | Current connector                                     | What still needs work                                                             |
+| --------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
+| France API Recherche d'entreprises (SIRENE-derived) | Authenticated app search is coded, keyless            | Deployment-network smoke test, retry policy and source suitability review         |
+| INSEE direct SIRENE V3.11                           | Separate INSEE subscription/key not yet integrated    | Official API adapter and key, protection for non-diffusible persons               |
+| UK Companies House                                  | Authenticated app adapter present                     | Add key, real remote test and production quota verification                       |
+| Germany Unternehmensregister / Handelsregister      | Registry catalog and authorized dataset importer only | Source-specific permitted API/feed/license and validation; not safe to claim live |
+| Italy Registro Imprese                              | Registry catalog and importer only                    | Approved commercial data access and field mappings                                |
+| 50 US state registries                              | Catalog and state-scoped CSV importer                 | State-by-state API/bulk source licenses and fixtures; no nationwide public API    |
+| Singapore, Canada                                   | Importer/catalog                                      | Approved official exports and source-specific integration                         |
 
 A registry catalog entry is not evidence of a working API. A successful company lookup does not authorize contacting its officers. If protected or non-diffusible fields are returned, filter them before saving or prospecting.
 

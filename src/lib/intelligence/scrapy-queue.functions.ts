@@ -26,7 +26,9 @@ export const queueScrapyWebsiteCrawls = createServerFn({ method: "POST" })
       if (lookupError) throw new Error(lookupError.message);
       if (pending?.length) continue;
       const { error: insertError } = await db.from("enrichment_runs").insert({
-        user_id: context.userId, business_id: business.id, type: "crawl_website",
+        user_id: context.userId,
+        business_id: business.id,
+        type: "crawl_website",
         status: "queued",
       });
       if (!insertError) queued++;
